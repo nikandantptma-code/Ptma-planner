@@ -612,7 +612,7 @@ async function api(system, user) {
   const r = await fetch('/api/chat', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, system, messages:[{role:'user',content:user}] })
+    body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:2000, system, messages:[{role:'user',content:user}] })
   });
   const d = await r.json();
   const t = (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
