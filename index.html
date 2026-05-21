@@ -736,7 +736,13 @@ async function analyseLang() {
     }
     const clean = rawText.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
     try {
-      const r = JSON.parse(clean);
+      let r;
+      try { r = JSON.parse(clean); }
+      catch(e1) {
+        const s=clean.indexOf('{'); const e=clean.lastIndexOf('}');
+        if(s!==-1&&e!==-1) r=JSON.parse(clean.slice(s,e+1));
+        else throw e1;
+      }
       S.lang=r;renderLangResult(r);
     } catch(parseErr) {
       alert('Parse failed. Response was: '+rawText.substring(0,200));
@@ -923,16 +929,12 @@ async function generate() {
     const st2 = await api(sys,pStrat(b),2000);
     if(!st2) throw new Error('Strategy could not be generated. Please try again.');
     const lg  = await api(sys,pLead(b),2000);
-    // Content and email run in parallel pairs to halve the time
-    const [ct1, ct2] = await Promise.all([
-      api(sys,pContent(b,'1-2'),2500),
-      api(sys,pContent(b,'3-4'),2500)
-    ]);
+    // Run sequentially for reliability
+    const ct1 = await api(sys,pContent(b,'1-2'),2500);
+    const ct2 = await api(sys,pContent(b,'3-4'),2500);
     const ct = mergeContent(ct1,ct2);
-    const [em1, em2] = await Promise.all([
-      api(sys,pEmail(b,'1-3'),2000),
-      api(sys,pEmail(b,'4-6'),2000)
-    ]);
+    const em1 = await api(sys,pEmail(b,'1-3'),2000);
+    const em2 = await api(sys,pEmail(b,'4-6'),2000);
     const em = mergeEmail(em1,em2);
     const dm  = await api(sys,pDM(b),2000);
     const mc  = b.opts.manychat ? await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),2000) : null;
