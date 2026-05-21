@@ -607,22 +607,22 @@ RULE 4 — THE VALUE EQUATION (Hormozi): VALUE = (Dream Outcome x Perceived Like
 RULE 5 — TWO OFFERS NOT ONE (Hormozi + FMA + PTMA): Attention offer (lead magnet — so good it feels like it should cost money) AND Conversion offer (FEO — NOT a free consultation, delivers real value before the sales conversation). No campaign goes cold to core offer directly.
 RULE 6 — CONTENT RATIO (GaryVee + Hormozi): 80 percent value (jabs — stories, education, proof, community), 20 percent ask (right hooks — CTA, offer, sell). Never stack two asks in a row. Document do not manufacture. Show the thinking not just the result.
 RULE 7 — DOCUMENT NOT MANUFACTURE (Simon Booth + GaryVee + James Smith): Best content captures what the coach already does — sessions, gym floor moments, real client conversations, personal opinions, real failures. Story structure: Problem to Realisation to Shift to Outcome.
-RULE 8 — LAUNCH IS A SEQUENCE NOT A DATE (Jeff Walker + Luke Johnson): Phase 1 pre-launch 4 to 6 weeks before — problem awareness only, no selling. Phase 2 build 2 to 3 weeks — social proof, anticipation, authority, community. Deploy: social proof, authority, reciprocity, anticipation, scarcity. Phase 3 launch event — urgency, deadline, one CTA. June content feeds July clients.
+RULE 8 — LAUNCH IS A SEQUENCE NOT A DATE (Jeff Walker + Luke Johnson): Phase 1 pre-launch 4 to 6 weeks before — problem awareness only, no selling. Phase 2 build 2 to 3 weeks — social proof, anticipation, authority, community. Phase 3 launch event — urgency, deadline, one CTA. June content feeds July clients.
 RULE 9 — HOOK STORY OFFER (Brunson): Every piece needs all three. Hook stops scroll — pain-first, specific, pattern-interrupt. Story uses Epiphany Bridge: Backstory to Desire to Wall to Epiphany to Result. Offer is one clear specific action with reason to act now.
-RULE 10 — ANTI-GENERIC CHECKLIST: Before returning verify: no vague outcome language, no generic positioning, no AI-sounding tips, no CTA without urgency, no content that belongs to any coach, no offer without specific pain AND measurable outcome, no outside-in communication (WHAT then WHY — reverse to WHY then WHAT).`;
+RULE 10 — ANTI-GENERIC CHECKLIST: No vague outcome language, no generic positioning, no AI-sounding tips, no CTA without urgency, no content that belongs to any coach, no offer without specific pain AND measurable outcome.`;
 
 // ── API ────────────────────────────────────────────────────────────────────
 async function api(system, user) {
-  // Combine system context into user message to avoid prompt length issues
-  const fullUser = system + '\n\n' + user;
+  // System prompt = PTMA Standard + instructions
+  // User message = campaign brief + JSON schema only
   const r = await fetch('/api/chat', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
       model:'claude-sonnet-4-6',
       max_tokens:2000,
-      system:'You are an expert fitness business campaign strategist. Return ONLY compact JSON. No preamble. No markdown fences.',
-      messages:[{role:'user',content:fullUser}]
+      system: system,
+      messages:[{role:'user',content:user}]
     })
   });
   const d = await r.json();
@@ -893,7 +893,7 @@ async function generate() {
   },1800);
 
   const ctx=lCtx()+vCtx();
-  const sys=`${PTMA_STANDARD}${ctx}\nReturn ONLY compact JSON. No preamble. No markdown fences.`;
+  const sys=`${PTMA_STANDARD}${ctx}\n\nYou are an expert fitness business campaign strategist. Return ONLY compact JSON. No preamble. No markdown fences. Apply every PTMA rule to every output.`;
 
   try {
     const calls=[
