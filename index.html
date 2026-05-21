@@ -922,10 +922,20 @@ async function generate() {
 // ── PROMPTS ────────────────────────────────────────────────────────────────
 function pStrat(b){
   const units = b.price && b.goal ? Math.ceil(parseInt(b.goal)/parseInt(b.price)) : null;
-  const revenueNote = units ? `Revenue goal: £${b.goal} = exactly ${units} clients at £${b.price} each. KPIs must reflect this exact target.` : '';
-  return `Campaign strategy. Niche: ${b.niche} | Offer: "${b.offer}"${b.price?` at £${b.price}`:''} | Objective: ${b.obj} | Month: ${b.month} | Delivery: ${b.f2f?'F2F+Online':'Online only'}${revenueNote?`
-${revenueNote}`:''}
-Return: {"campaignName":"","whyStatement":"","coreMessage":"","clientHero":"","coachGuideRole":"","threePains":{"external":"","internal":"","philosophical":""},"valueStack":"","phases":[{"phase":"","timing":"","objective":"","contentFocus":"","trigger":""}],"kpis":["Revenue goal: £${b.goal||'TBC'}","Units needed: ${units||'TBC'} at £${b.price||'TBC'}","Conversion rate needed","Lead gen target","Content reach target"],"standardCheck":""}`;}
+  const goalStr = b.goal || 'TBC';
+  const priceStr = b.price || 'TBC';
+  const unitsStr = units || 'TBC';
+  const revenueNote = units ? 'Revenue goal: £'+b.goal+' = exactly '+units+' clients at £'+b.price+' each. KPIs must hit this exactly.' : '';
+  const kpis = JSON.stringify([
+    'Revenue goal: £'+goalStr,
+    'Units needed: '+unitsStr+' at £'+priceStr+' each',
+    'Conversion rate needed to hit target',
+    'Lead gen volume required',
+    'Content reach target'
+  ]);
+  return 'Campaign strategy. Niche: '+b.niche+' | Offer: "'+b.offer+'"'+(b.price?' at £'+b.price:'')+' | Objective: '+b.obj+' | Month: '+b.month+' | Delivery: '+(b.f2f?'F2F+Online':'Online only')+(revenueNote?'\n'+revenueNote:'')+
+    '\nReturn: {"campaignName":"","whyStatement":"","coreMessage":"","clientHero":"","coachGuideRole":"","threePains":{"external":"","internal":"","philosophical":""},"valueStack":"","phases":[{"phase":"","timing":"","objective":"","contentFocus":"","trigger":""}],"kpis":'+kpis+',"standardCheck":""}';
+}
 
 function pLead(b){return `Lead gen + FEO. Niche: ${b.niche} | Offer: "${b.offer}" | Objective: ${b.obj} | Month: ${b.month} | Delivery: ${b.f2f?'F2F+Online':'Online only'}
 Return: {"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":""},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":""},"reactivationOption":{"trigger":"","offer":"","message":""}}`;}
