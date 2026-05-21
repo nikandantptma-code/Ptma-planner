@@ -615,7 +615,7 @@ RULE 10 — ANTI-GENERIC CHECKLIST: No vague outcome language, no generic positi
 
 // ── API ────────────────────────────────────────────────────────────────────
 async function api(system, user, maxTok=2000) {
-  const r = await fetch('https://nikandantptma.workers.dev/api/chat', {
+  const r = await fetch('https://ptma-planner.nikandantptma.workers.dev/api/chat', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -712,7 +712,7 @@ async function analyseLang() {
   const orig=btn.textContent;btn.textContent='Analysing... please wait';btn.disabled=true;
   try{
     const trimmed = combined.length > 3000 ? combined.substring(0,3000) : combined;
-    const rawResp = await fetch('https://nikandantptma.workers.dev/api/chat', {
+    const rawResp = await fetch('https://ptma-planner.nikandantptma.workers.dev/api/chat', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
