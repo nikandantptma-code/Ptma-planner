@@ -612,15 +612,13 @@ RULE 9 — HOOK STORY OFFER (Brunson): Every piece needs all three. Hook stops s
 RULE 10 — ANTI-GENERIC CHECKLIST: No vague outcome language, no generic positioning, no AI-sounding tips, no CTA without urgency, no content that belongs to any coach, no offer without specific pain AND measurable outcome.`;
 
 // ── API ────────────────────────────────────────────────────────────────────
-async function api(system, user) {
-  // System prompt = PTMA Standard + instructions
-  // User message = campaign brief + JSON schema only
+async function api(system, user, maxTok=2000) {
   const r = await fetch('/api/chat', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
       model:'claude-sonnet-4-6',
-      max_tokens:2000,
+      max_tokens: maxTok,
       system: system,
       messages:[{role:'user',content:user}]
     })
@@ -897,11 +895,11 @@ async function generate() {
 
   try {
     const calls=[
-      api(sys,pStrat(b)),
-      api(sys,pLead(b)),
-      api(sys,pContent(b)),
-      api(sys,pEmail(b)),
-      api(sys,pDM(b)),
+      api(sys,pStrat(b),2000),
+      api(sys,pLead(b),2000),
+      api(sys,pContent(b),4000),
+      api(sys,pEmail(b),3000),
+      api(sys,pDM(b),2000),
     ];
     if(b.opts.meta) calls.push(api(sys,pMeta(b)));
     const [st2,lg,ct,em,dm,mt]=await Promise.all(calls);
@@ -922,8 +920,12 @@ async function generate() {
 }
 
 // ── PROMPTS ────────────────────────────────────────────────────────────────
-function pStrat(b){return `Campaign strategy. Niche: ${b.niche} | Offer: "${b.offer}"${b.price?` at £${b.price}`:''} | Objective: ${b.obj} | Month: ${b.month} | Delivery: ${b.f2f?'F2F+Online':'Online only'}
-Return: {"campaignName":"","whyStatement":"","coreMessage":"","clientHero":"","coachGuideRole":"","threePains":{"external":"","internal":"","philosophical":""},"valueStack":"","phases":[{"phase":"","timing":"","objective":"","contentFocus":"","trigger":""}],"kpis":[],"standardCheck":""}`;}
+function pStrat(b){
+  const units = b.price && b.goal ? Math.ceil(parseInt(b.goal)/parseInt(b.price)) : null;
+  const revenueNote = units ? `Revenue goal: £${b.goal} = exactly ${units} clients at £${b.price} each. KPIs must reflect this exact target.` : '';
+  return `Campaign strategy. Niche: ${b.niche} | Offer: "${b.offer}"${b.price?` at £${b.price}`:''} | Objective: ${b.obj} | Month: ${b.month} | Delivery: ${b.f2f?'F2F+Online':'Online only'}${revenueNote?`
+${revenueNote}`:''}
+Return: {"campaignName":"","whyStatement":"","coreMessage":"","clientHero":"","coachGuideRole":"","threePains":{"external":"","internal":"","philosophical":""},"valueStack":"","phases":[{"phase":"","timing":"","objective":"","contentFocus":"","trigger":""}],"kpis":["Revenue goal: £${b.goal||'TBC'}","Units needed: ${units||'TBC'} at £${b.price||'TBC'}","Conversion rate needed","Lead gen target","Content reach target"],"standardCheck":""}`;}
 
 function pLead(b){return `Lead gen + FEO. Niche: ${b.niche} | Offer: "${b.offer}" | Objective: ${b.obj} | Month: ${b.month} | Delivery: ${b.f2f?'F2F+Online':'Online only'}
 Return: {"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":""},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":""},"reactivationOption":{"trigger":"","offer":"","message":""}}`;}
