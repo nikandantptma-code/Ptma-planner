@@ -898,8 +898,8 @@ async function generate() {
   const sys=`${PTMA_STANDARD}${ctx}\n\nYou are an expert fitness business campaign strategist. Return ONLY compact JSON. No preamble. No markdown fences. Apply every PTMA rule to every output.`;
 
   try {
-    // Run calls sequentially to avoid rate limits and ensure each gets through
     const st2 = await api(sys,pStrat(b),2000);
+    if(!st2) throw new Error('Strategy API returned null. Check console.');
     const lg  = await api(sys,pLead(b),2000);
     const ct  = await api(sys,pContent(b),4000);
     const em  = await api(sys,pEmail(b),3000);
@@ -918,7 +918,7 @@ async function generate() {
     clearInterval(st);
     document.getElementById('loading').classList.remove('active');
     showTab(2);
-    const msg=e.message||''; if(msg.includes('401')){alert('Authentication error. Please contact PTMA support.');} else if(msg.includes('429')){alert('Too many requests. Please wait 30 seconds and try again.');} else {alert('Something went wrong. Please check your connection and try again.');}
+    alert('Error: ' + e.message + ' — Please screenshot this and send to PTMA support.');
   }
 }
 
