@@ -404,7 +404,8 @@ select option { background: #fff; }
   <button class="tab" onclick="showTab(5)">⑥ Content Plan</button>
   <button class="tab" onclick="showTab(6)">⑦ Email Sequence</button>
   <button class="tab" onclick="showTab(7)">⑧ DM Scripts</button>
-  <button class="tab" id="metaTab" style="display:none" onclick="showTab(8)">⑨ Meta Ads</button>
+  <button class="tab" id="manychatTab" style="display:none" onclick="showTab(8)">⑨ ManyChat</button>
+  <button class="tab" id="metaTab" style="display:none" onclick="showTab(9)">⑩ Meta Ads</button>
 </div>
 
 <div class="body">
@@ -508,6 +509,7 @@ select option { background: #fff; }
       <div class="field"><label>Core offer name</label><input id="f_offer" placeholder="e.g. The 90-Day Father Figure Programme"></div>
       <div class="field"><label>Offer price (£)</label><input id="f_price" type="number" placeholder="297"></div>
       <div class="field"><label>Monthly revenue goal (£)</label><input id="f_goal" type="number" placeholder="5000"></div>
+      <div class="field"><label>Client LTV — lifetime value (£)</label><input id="f_ltv" type="number" placeholder="e.g. 1200 if client stays 4 months at £297"></div>
     </div>
   </div>
 
@@ -653,6 +655,7 @@ function bf() {
     offer: document.getElementById('f_offer').value,
     price: document.getElementById('f_price').value,
     goal:  document.getElementById('f_goal').value,
+    ltv:   document.getElementById('f_ltv')?.value || '',
     obj:   document.getElementById('f_obj').value,
     month: document.getElementById('f_month').value,
     start: document.getElementById('f_start').value,
@@ -679,6 +682,7 @@ function toggleOpt(k) {
   S.opts[k]=!S.opts[k];
   document.getElementById('tog_'+k).className='toggle '+(S.opts[k]?'on-gold':'');
   if(k==='meta') document.getElementById('metaTab').style.display=S.opts.meta?'':'none';
+  if(k==='manychat') document.getElementById('manychatTab').style.display=S.opts.manychat?'':'none';
 }
 
 // ── FILES ──────────────────────────────────────────────────────────────────
@@ -894,20 +898,19 @@ async function generate() {
   const sys=`${PTMA_STANDARD}${ctx}\n\nYou are an expert fitness business campaign strategist. Return ONLY compact JSON. No preamble. No markdown fences. Apply every PTMA rule to every output.`;
 
   try {
-    const calls=[
-      api(sys,pStrat(b),2000),
-      api(sys,pLead(b),2000),
-      api(sys,pContent(b),4000),
-      api(sys,pEmail(b),3000),
-      api(sys,pDM(b),2000),
-    ];
-    if(b.opts.meta) calls.push(api(sys,pMeta(b)));
-    const [st2,lg,ct,em,dm,mt]=await Promise.all(calls);
+    // Run calls sequentially to avoid rate limits and ensure each gets through
+    const st2 = await api(sys,pStrat(b),2000);
+    const lg  = await api(sys,pLead(b),2000);
+    const ct  = await api(sys,pContent(b),4000);
+    const em  = await api(sys,pEmail(b),3000);
+    const dm  = await api(sys,pDM(b),2000);
+    const mc  = b.opts.manychat ? await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),2000) : null;
+    const mt  = b.opts.meta ? await api(sys,pMeta(b),2000) : null;
     clearInterval(st);
     document.querySelectorAll('.loading .step').forEach(s=>{s.className='step done';s.querySelector('.step-dot').style.background='var(--green)';});
-    S.res={strat:st2,lead:lg,content:ct,email:em,dm,meta:mt||null};
+    S.res={strat:st2,lead:lg,content:ct,email:em,dm,manychat:mc||null,meta:mt||null};
     await new Promise(r=>setTimeout(r,600));
-    rStrat(st2); rLead(lg); rContent(ct); rEmail(em); rDM(dm); if(mt)rMeta(mt,b);
+    rStrat(st2); rLead(lg); rContent(ct); rEmail(em); rDM(dm); if(mc)rManyChat(mc,b); if(mt)rMeta(mt,b);
     updateBadges();
     document.getElementById('loading').classList.remove('active');
     showTab(3);
@@ -951,9 +954,17 @@ Email 1 deliver+trust(jab). Email 2 teach something specific(jab). Email 3 clien
 function pDM(b){return `DM scripts suite. Niche: ${b.niche} | Offer: "${b.offer}" | Month: ${b.month}
 Return: {"coldOutreach":{"opener":"","followUp":""},"warmLeadScript":{"opener":"","valueAdd":"","bridge":"","closingScript":""},"objectionHandles":[{"objection":"","response":""},{"objection":"","response":""},{"objection":"","response":""}],"reactivationDM":{"target":"","opener":"","offer":""},"gymFloorConversation":{"opener":"","bridge":"","followUp":""}}`;}
 
-function pMeta(b){return `Meta advertising suite. Niche: ${b.niche} | Offer: "${b.offer}"${b.price?` at £${b.price}`:''} | Objective: ${b.obj} | Month: ${b.month} | Delivery: ${b.f2f?'F2F+Online':'Online only'}
-Return: {"coldAd":{"campaignObjective":"","primaryText":"","headline":"","description":"","ctaButton":"","creativeDirection":"","audienceNotes":""},"warmRetarget":{"audience":"","primaryText":"","headline":"","ctaButton":"","budgetNote":""},"leadForm":{"formHeadline":"","introParagraph":"","questions":[],"thankYouMessage":"","followUpAction":""},"budgetFramework":{"dailyBudget":"","flightDates":"","expectedCPL":"","expectedConversionRate":"","breakEven":""}}`;}
+function pManyChat(b){
+  return 'ManyChat automation flow. Niche: '+b.niche+' | Offer: "'+b.offer+'" | Month: '+b.month+'\nReturn: {"welcomeFlow":{"trigger":"","opener":"","quickReplies":[],"leadCapture":""},"leadMagnetFlow":{"trigger":"","deliveryMessage":"","followUp1":"","followUp2":"","bridgeToFEO":""},"gymFloorFlow":{"trigger":"","opener":"","qualifier":"","bookingCTA":""},"broadcastMessages":[{"timing":"","purpose":"","message":"","quickReplies":[]}],"keywordTriggers":[{"keyword":"","response":"","action":""}]}';
+}
 
+function pMeta(b){
+  const ltv = b.ltv ? parseInt(b.ltv) : null;
+  const price = b.price ? parseInt(b.price) : null;
+  const ltvNote = ltv && price ? 'Client LTV: \u00a3'+b.ltv+'. Max CPL based on LTV: \u00a3'+(ltv*0.2).toFixed(0)+' (20% CAC). Max CPL based on front end: \u00a3'+(price*0.3).toFixed(0)+' (30% CAC). Show CPL ranges using both.' : '';
+  return 'Meta advertising. Niche: '+b.niche+' | Offer: "'+b.offer+'"'+(b.price?' at \u00a3'+b.price:'')+' | Objective: '+b.obj+' | Month: '+b.month+(ltvNote?' | '+ltvNote:'')+
+    '\nReturn: {"coldAd":{"campaignObjective":"","primaryText":"","headline":"","description":"","ctaButton":"","creativeDirection":"","audienceNotes":""},"warmRetarget":{"audience":"","primaryText":"","headline":"","ctaButton":"","budgetNote":""},"leadForm":{"formHeadline":"","introParagraph":"","questions":[],"thankYouMessage":"","followUpAction":""},"budgetFramework":{"dailyBudget":"","flightDates":"","expectedCPL":"","expectedCPLBasedOnLTV":"","expectedConversionRate":"","breakEven":"","ltvNote":""}}';
+}
 // ── RENDER HELPERS ─────────────────────────────────────────────────────────
 function stdBanner(){return `<div class="standard-banner"><div class="mark">⚡</div><div><div class="title">Generated to The PTMA Standard</div><div class="sub">Hormozi · Jeff Walker · StoryBrand · Sinek · Vaynerchuk · Brunson · Luke Johnson · Simon Booth · FMA · James Smith</div></div></div>`;}
 
@@ -1063,12 +1074,62 @@ function rDM(d){
 }
 
 // ── RENDER META ────────────────────────────────────────────────────────────
+function rManyChat(d,b){
+  if(!d)return;
+  let h=stdBanner();
+  if(d.welcomeFlow){
+    const wf=d.welcomeFlow;
+    const wfTxt=wf.opener+'\n\n'+wf.leadCapture;
+    h+='<div class="card card-cyan"><div class="output-row"><span class="badge badge-cyan">Welcome Flow</span>'+cp('mc_w',wfTxt)+'</div>';
+    h+='<div class="kv"><div class="k">Trigger</div><div class="v">'+wf.trigger+'</div></div>';
+    h+='<div class="dm-bubble">'+wf.opener+'</div>';
+    if(wf.quickReplies&&wf.quickReplies.length)h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+wf.quickReplies.map(function(r){return '<span class="badge badge-cyan">'+r+'</span>';}).join('')+'</div>';
+    h+='<div class="kv" style="margin-top:10px"><div class="k">Lead Capture</div><div class="v">'+wf.leadCapture+'</div></div></div>';
+  }
+  if(d.leadMagnetFlow){
+    const lm=d.leadMagnetFlow;
+    const lmTxt=lm.deliveryMessage+'\n\n'+(lm.followUp1||'')+'\n\n'+(lm.followUp2||'')+'\n\n'+(lm.bridgeToFEO||'');
+    h+='<div class="card card-green"><div class="output-row"><span class="badge badge-green">Lead Magnet Delivery Flow</span>'+cp('mc_lm',lmTxt)+'</div>';
+    var lmFields=[['Delivery',lm.deliveryMessage],['Follow-up 1',lm.followUp1],['Follow-up 2',lm.followUp2],['Bridge to FEO',lm.bridgeToFEO]];
+    lmFields.forEach(function(pair){h+='<div class="section-label" style="margin-top:12px">'+pair[0]+'</div><div class="dm-bubble">'+(pair[1]||'')+'</div>';});
+    h+='</div>';
+  }
+  if(d.gymFloorFlow){
+    const gf=d.gymFloorFlow;
+    h+='<div class="card card-purple"><div class="output-row"><span class="badge badge-purple">Gym Floor Flow</span>'+cp('mc_gf',(gf.opener||'')+'\n\n'+(gf.qualifier||'')+'\n\n'+(gf.bookingCTA||''))+'</div>';
+    var gfFields=[['Trigger',gf.trigger],['Opener',gf.opener],['Qualifier',gf.qualifier],['Booking CTA',gf.bookingCTA]];
+    gfFields.forEach(function(pair){h+='<div class="kv"><div class="k">'+pair[0]+'</div><div class="v">'+(pair[1]||'')+'</div></div>';});
+    h+='</div>';
+  }
+  if(d.broadcastMessages&&d.broadcastMessages.length){
+    h+='<div class="card card-amber"><div class="section-label">Broadcast Messages</div>';
+    d.broadcastMessages.forEach(function(m,i){
+      h+='<div style="margin-bottom:16px"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="badge badge-amber">'+(m.timing||'')+'</span><span style="font-size:11px;color:var(--textSub)">'+(m.purpose||'')+'</span>'+cp('mc_b'+i,m.message||'')+'</div><div class="dm-bubble">'+(m.message||'')+'</div>';
+      if(m.quickReplies&&m.quickReplies.length)h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+m.quickReplies.map(function(r){return '<span class="badge badge-gold">'+r+'</span>';}).join('')+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  if(d.keywordTriggers&&d.keywordTriggers.length){
+    h+='<div class="card"><div class="section-label">Keyword Triggers</div>';
+    d.keywordTriggers.forEach(function(t){
+      h+='<div style="margin-bottom:14px"><p style="font-size:12px;color:var(--teal);font-weight:700;margin-bottom:6px">Keyword: "'+(t.keyword||'')+'"</p><div class="dm-bubble">'+(t.response||'')+'</div><p style="font-size:11px;color:var(--textSub);margin-top:4px">Action: '+(t.action||'')+'</p></div>';
+    });
+    h+='</div>';
+  }
+  document.getElementById('manychatOut').innerHTML=h;
+}
+
 function rMeta(d,b){
   if(!d) return;
   let h=stdBanner();
   if(d.budgetFramework){
     const bf=d.budgetFramework;
-    h+=`<div class="card"><div class="section-label">Budget Framework</div><div class="grid-2">${[['Daily Budget',bf.dailyBudget,'v-gold'],['Flight Dates',bf.flightDates,'v'],['Expected CPL',bf.expectedCPL,'v-green'],['Conversion Rate',bf.expectedConversionRate,'v'],['Break Even',bf.breakEven,'v']].map(([k,v,cls])=>`<div class="kv"><div class="k">${k}</div><div class="v ${cls||''}">${v||''}</div></div>`).join('')}</div></div>`;
+    let budgetHtml='<div class="card"><div class="section-label">Budget Framework + CPL Targets</div>';
+    if(bf.ltvNote)budgetHtml+='<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--teal)">'+bf.ltvNote+'</div>';
+    const fields=[['Daily Budget',bf.dailyBudget,'v-gold'],['Flight Dates',bf.flightDates,'v'],['CPL Target (front end)',bf.expectedCPL,'v-green'],['CPL Target (LTV basis)',bf.expectedCPLBasedOnLTV,'v-cyan'],['Conversion Rate',bf.expectedConversionRate,'v'],['Break Even',bf.breakEven,'v']];
+    budgetHtml+='<div class="grid-2">'+fields.filter(([,v])=>v).map(([k,v,cls])=>'<div class="kv"><div class="k">'+k+'</div><div class="v '+(cls||'')+'">'+v+'</div></div>').join('')+'</div></div>';
+    h+=budgetHtml;
   }
   if(d.coldAd){
     const ca=d.coldAd;
