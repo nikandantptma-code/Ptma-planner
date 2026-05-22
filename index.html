@@ -616,8 +616,10 @@ RULE 9 — HOOK STORY OFFER (Brunson): Every piece needs all three. Hook stops s
 RULE 10 — ANTI-GENERIC CHECKLIST: No vague outcome language, no generic positioning, no AI-sounding tips, no CTA without urgency, no content that belongs to any coach, no offer without specific pain AND measurable outcome.`;
 
 // ── API ────────────────────────────────────────────────────────────────────
-async function api(system, user, maxTok=2000) {
-  const r = await fetch('https://raspy-cell-b1df.nikandantptma.workers.dev/api/chat', {
+// PATCHED 2026-05-22: maxTok default raised to 4000 to stop JSON truncation;
+// detailed parse-failure logging; auto-repair of common truncation patterns.
+async function api(system, user, maxTok=4000) {
+  const r = await fetch('/api/chat', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -631,15 +633,72 @@ async function api(system, user, maxTok=2000) {
   console.log('API response status:', r.status, 'error:', d.error, 'content length:', JSON.stringify(d.content||[]).length);
   const t = (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
   console.log('Text length:', t.length, 'first 50:', t.substring(0,50));
-  try {
-    const clean = t.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-    try { return JSON.parse(clean); } catch(e1) {
-      const start = clean.indexOf('{');
-      const end = clean.lastIndexOf('}');
-      if(start !== -1 && end !== -1) return JSON.parse(clean.slice(start, end+1));
+  const clean = t.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+  // Strategy 1: parse as-is
+  try { return JSON.parse(clean); } catch(e1) {
+    console.warn('JSON.parse(clean) failed:', e1.message);
+    // Strategy 2: slice between first { and last }
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    if(start !== -1 && end !== -1) {
+      try { return JSON.parse(clean.slice(start, end+1)); }
+      catch(e2) { console.warn('JSON.parse(slice) failed:', e2.message); }
+    }
+    // Strategy 3: response truncated mid-output — try to auto-repair
+    // by closing unfinished strings/objects/arrays
+    try {
+      const repaired = repairTruncatedJson(clean.slice(start));
+      const out = JSON.parse(repaired);
+      console.warn('JSON parsed via repair. Response was likely truncated — consider raising max_tokens.');
+      return out;
+    } catch(e3) {
+      console.error('JSON repair failed:', e3.message);
+      console.error('Raw text (last 300 chars):', t.slice(-300));
       return null;
     }
-  } catch { return null; }
+  }
+}
+
+// Best-effort repair for JSON that was cut off mid-output.
+// Closes any unterminated string, then balances brackets/braces.
+function repairTruncatedJson(s) {
+  if (!s) return s;
+  let inString = false, escape = false, stack = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === '{' || c === '[') stack.push(c);
+    else if (c === '}' && stack[stack.length-1] === '{') stack.pop();
+    else if (c === ']' && stack[stack.length-1] === '[') stack.pop();
+  }
+  let out = s;
+  // If we're inside a string, terminate it.
+  if (inString) out += '"';
+  // Trim trailing comma if present.
+  out = out.replace(/,\s*$/, '');
+  // Close any open brackets/braces.
+  while (stack.length) {
+    const open = stack.pop();
+    out += (open === '{' ? '}' : ']');
+  }
+  return out;
+}
+
+// Non-blocking error display (replaces alert() which freezes the JS thread).
+function showError(msg) {
+  let el = document.getElementById('inlineErr');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'inlineErr';
+    el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#E85D5D;color:#fff;padding:16px 24px;border-radius:10px;font-family:inherit;font-size:14px;max-width:560px;z-index:10000;box-shadow:0 10px 30px rgba(0,0,0,0.3);cursor:pointer';
+    el.title = 'Click to dismiss';
+    el.onclick = () => el.remove();
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<strong>Something went wrong</strong><br>' + msg + '<br><em style="font-size:12px;opacity:0.85">Click anywhere on this banner to dismiss.</em>';
 }
 
 // ── CONTEXT ────────────────────────────────────────────────────────────────
@@ -716,7 +775,7 @@ async function analyseLang() {
   const orig=btn.textContent;btn.textContent='Analysing... please wait';btn.disabled=true;
   try{
     const trimmed = combined.length > 3000 ? combined.substring(0,3000) : combined;
-    const rawResp = await fetch('https://raspy-cell-b1df.nikandantptma.workers.dev/api/chat', {
+    const rawResp = await fetch('/api/chat', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -973,7 +1032,7 @@ async function generate() {
     clearInterval(st);
     document.getElementById('loading').classList.remove('active');
     showTab(2);
-    alert('Error: ' + e.message + ' — Please screenshot this and send to PTMA support.');
+    showError(e.message + ' — Please screenshot this banner and send to PTMA support.');
   }
 }
 
