@@ -414,15 +414,17 @@ select option { background: #fff; }
 <div class="loading" id="loading">
   <div class="loading-mark"></div>
   <div class="loading-title">Building your campaign plan</div>
-  <div class="loading-sub">Applying The PTMA Standard across 9 frameworks</div>
+  <div class="loading-sub" id="loadingSub">Applying The PTMA Standard across 9 frameworks</div>
   <div class="steps">
-    <div class="step active" id="step0"><div class="step-dot"></div>Campaign strategy and WHY statement</div>
+    <div class="step" id="step0"><div class="step-dot"></div>Campaign strategy and WHY statement</div>
     <div class="step" id="step1"><div class="step-dot"></div>Lead gen architecture and FEO</div>
     <div class="step" id="step2"><div class="step-dot"></div>4-week content plan</div>
     <div class="step" id="step3"><div class="step-dot"></div>6-email nurture sequence</div>
     <div class="step" id="step4"><div class="step-dot"></div>DM scripts suite</div>
     <div class="step" id="step5"><div class="step-dot"></div>Meta ads and retargeting</div>
   </div>
+  <div id="loadingTimer" style="margin-top:20px;font-size:14px;color:var(--textSub);text-align:center;font-variant-numeric:tabular-nums">Elapsed: 0:00</div>
+  <div style="margin-top:8px;font-size:12px;color:var(--textSub);text-align:center;max-width:520px;line-height:1.55">Full generation takes 3–5 minutes. <strong>Don't refresh</strong> — your campaign is auto-saved as each section completes, so you can come back if anything happens.</div>
 </div>
 
 <!-- PAGE 0: CLIENT DATA -->
@@ -598,6 +600,27 @@ select option { background: #fff; }
 </div><!-- /body -->
 
 <script>
+// ── DISPLAY GUARD ─────────────────────────────────────────────────────────
+// PATCHED 2026-05-22: Intercept every innerHTML assignment to scrub
+// "[object Object]" tokens that occur when the model returns an object
+// where the schema expects a string. Show a dash + hint instead so the
+// coach knows the field is partial and can regenerate.
+(function patchInnerHTML(){
+  const desc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  if (!desc || !desc.set) return;
+  const _origSet = desc.set;
+  Object.defineProperty(Element.prototype, 'innerHTML', {
+    configurable: true,
+    enumerable: desc.enumerable,
+    get: desc.get,
+    set: function(value){
+      const v = String(value == null ? '' : value)
+        .replace(/\[object Object\]/g, '<em style="color:#999;font-style:italic">[partial — regenerate to fix]</em>');
+      _origSet.call(this, v);
+    }
+  });
+})();
+
 // ── STATE ──────────────────────────────────────────────────────────────────
 const S = { tab:0, lang:null, voice:null, langFiles:[], voiceFiles:[], f2f:true, opts:{meta:false,manychat:false,retarget:false}, res:{} };
 
@@ -965,71 +988,136 @@ function mergeEmail(em1, em2) {
   };
 }
 
+// PATCHED 2026-05-22 (round 3): Real-time progress + auto-save to localStorage.
+// Each step dot now turns green ONLY when its api() call completes — not on a
+// fake timer. The total elapsed time is updated every second so coaches can see
+// real progress. After every section finishes, the entire campaign is written
+// to localStorage so a refresh doesn't lose work.
+const SAVE_KEY = 'ptma_campaign_v1';
+
+function markStep(idx, status) {
+  const el = document.getElementById('step' + idx);
+  if (!el) return;
+  el.className = 'step ' + status;
+  const dot = el.querySelector('.step-dot');
+  if (dot) {
+    if (status === 'done') dot.style.background = 'var(--green)';
+    else if (status === 'active') dot.style.background = 'var(--cyan)';
+    else dot.style.background = '';
+  }
+}
+
+function setLoadingSub(text) {
+  const el = document.getElementById('loadingSub');
+  if (el) el.textContent = text;
+}
+
+function saveCampaign(brief) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      brief: brief,
+      res: S.res,
+      lang: S.lang === 'skipped' ? 'skipped' : S.lang,
+      voice: S.voice === 'skipped' ? 'skipped' : S.voice,
+      opts: S.opts,
+      f2f: S.f2f,
+      savedAt: new Date().toISOString()
+    }));
+  } catch (e) { console.warn('Save failed (probably storage quota):', e.message); }
+}
+
+function clearCampaign() {
+  try { localStorage.removeItem(SAVE_KEY); } catch {}
+}
+
 async function generate() {
   const b=bf();
-  if(!b.niche||!b.offer){alert('Please fill in your niche and offer name before generating.');return;}
+  if(!b.niche||!b.offer){showError('Please fill in your niche and offer name before generating.');return;}
+
+  // Fresh start — clear any previous saved campaign so we don't restore over the new one
+  clearCampaign();
+  S.res = {};
 
   // Show loading, hide pages
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('loading').classList.add('active');
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
 
-  // Animate steps
-  let si=0;
-  const st=setInterval(()=>{
-    if(si>0){const el=document.getElementById(`step${si-1}`);if(el){el.className='step done';el.querySelector('.step-dot').style.background='var(--green)';}}
-    if(si<6){const el=document.getElementById(`step${si}`);if(el){el.className='step active';}}
-    si++;
-    if(si>5) clearInterval(st);
-  },1800);
+  // Reset all step dots
+  for (let i = 0; i < 6; i++) markStep(i, '');
+
+  // Live elapsed-time counter — updates every second
+  const t0 = Date.now();
+  const timerEl = document.getElementById('loadingTimer');
+  const timerInt = setInterval(() => {
+    if (!timerEl) return;
+    const s = Math.floor((Date.now() - t0) / 1000);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    timerEl.textContent = 'Elapsed: ' + m + ':' + String(r).padStart(2,'0');
+  }, 1000);
 
   const ctx=lCtx()+vCtx();
   const sys=`${PTMA_STANDARD}${ctx}\n\nYou are an expert fitness business campaign strategist. Return ONLY compact JSON. No preamble. No markdown fences. Apply every PTMA rule to every output.`;
 
   try {
-    // Render each result as it arrives - don't wait for all calls
-    console.log('Calling strategy API...');
-    console.log('sys length:', sys.length);
-    console.log('pStrat output:', pStrat(b).substring(0,200));
-    const st2 = await api(sys,pStrat(b),2000);
-    console.log('st2 result:', st2);
+    // ── Step 0: Strategy ──
+    markStep(0, 'active'); setLoadingSub('Writing campaign strategy and WHY statement…');
+    const st2 = await api(sys,pStrat(b),4000);
     if(!st2) throw new Error('Strategy could not be generated. Please try again.');
-    rStrat(st2); S.res.strat=st2;
-    
-    const lg = await api(sys,pLead(b),2000);
-    rLead(lg); S.res.lead=lg;
-    
-    // Show the tool now with strategy and lead gen - coaches see progress
+    rStrat(st2); S.res.strat=st2; saveCampaign(b);
+    markStep(0, 'done');
+
+    // ── Step 1: Lead Gen + FEO ──
+    markStep(1, 'active'); setLoadingSub('Designing your lead magnet and front-end offer…');
+    const lg = await api(sys,pLead(b),3500);
+    rLead(lg); S.res.lead=lg; saveCampaign(b);
+    markStep(1, 'done');
+
+    // Show the Strategy tab now so coaches see progress while the rest generates
     document.getElementById('loading').classList.remove('active');
     showTab(3);
-    
-    // Continue generating remaining tabs in background
-    const ct1 = await api(sys,pContent(b,'1-2'),2500);
-    const ct2 = await api(sys,pContent(b,'3-4'),2500);
+
+    // ── Step 2: Content Plan (two calls) ──
+    markStep(2, 'active'); setLoadingSub('Building your 4-week content plan…');
+    const ct1 = await api(sys,pContent(b,'1-2'),5000);
+    const ct2 = await api(sys,pContent(b,'3-4'),5000);
     const ct = mergeContent(ct1,ct2);
-    rContent(ct); S.res.content=ct;
-    
-    const em1 = await api(sys,pEmail(b,'1-3'),2000);
-    const em2 = await api(sys,pEmail(b,'4-6'),2000);
+    rContent(ct); S.res.content=ct; saveCampaign(b);
+    markStep(2, 'done');
+
+    // ── Step 3: Email Sequence (two calls) ──
+    markStep(3, 'active'); setLoadingSub('Writing the 6-email nurture sequence…');
+    const em1 = await api(sys,pEmail(b,'1-3'),4000);
+    const em2 = await api(sys,pEmail(b,'4-6'),4000);
     const em = mergeEmail(em1,em2);
-    rEmail(em); S.res.email=em;
-    
-    const dm = await api(sys,pDM(b),2000);
-    rDM(dm); S.res.dm=dm;
-    
-    if(b.opts.manychat){
-      const mc = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),2000);
-      if(mc){rManyChat(mc,b); S.res.manychat=mc;}
+    rEmail(em); S.res.email=em; saveCampaign(b);
+    markStep(3, 'done');
+
+    // ── Step 4: DM Scripts ──
+    markStep(4, 'active'); setLoadingSub('Drafting the DM scripts suite…');
+    const dm = await api(sys,pDM(b),3500);
+    rDM(dm); S.res.dm=dm; saveCampaign(b);
+    markStep(4, 'done');
+
+    // ── Step 5: Optional extras (only if toggled on) ──
+    if (b.opts.manychat || b.opts.meta) {
+      markStep(5, 'active'); setLoadingSub('Generating optional extras…');
+      if(b.opts.manychat){
+        const mc = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),3500);
+        if(mc){rManyChat(mc,b); S.res.manychat=mc; saveCampaign(b);}
+      }
+      if(b.opts.meta){
+        const mt = await api(sys,pMeta(b),3500);
+        if(mt){rMeta(mt,b); S.res.meta=mt; saveCampaign(b);}
+      }
     }
-    if(b.opts.meta){
-      const mt = await api(sys,pMeta(b),2000);
-      if(mt){rMeta(mt,b); S.res.meta=mt;}
-    }
-    
-    clearInterval(st);
+    markStep(5, 'done');
+
+    clearInterval(timerInt);
     updateBadges();
   } catch(e) {
-    clearInterval(st);
+    clearInterval(timerInt);
     document.getElementById('loading').classList.remove('active');
     showTab(2);
     showError(e.message + ' — Please screenshot this banner and send to PTMA support.');
@@ -1262,6 +1350,143 @@ function rMeta(d,b){
     h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Native Lead Form</span>${cp('meta_f',`Form: ${lf.formHeadline}\n\n${lf.introParagraph}\n\nQuestions:\n${(lf.questions||[]).join('\n')}\n\nThank you: ${lf.thankYouMessage}`)}</div><div class="card-title">${lf.formHeadline}</div><p style="font-size:13px;color:var(--textMid);margin:10px 0;line-height:1.6">${lf.introParagraph}</p><div class="section-label">Form Questions</div>${(lf.questions||[]).map((q,i)=>`<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><span style="background:var(--cyanLight);color:var(--teal);border:1px solid var(--cyanBorder);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</span><span style="font-size:13px">${q}</span></div>`).join('')}<div class="divider"></div><div class="kv"><div class="k">Thank You Message</div><div class="v">${lf.thankYouMessage}</div></div><div class="kv"><div class="k">Follow-up Action</div><div class="v v-cyan">${lf.followUpAction}</div></div></div>`;
   }
   document.getElementById('metaOut').innerHTML=h;
+}
+
+// ── COPY ENTIRE TAB ────────────────────────────────────────────────────────
+// PATCHED 2026-05-22 (round 3): a single "Copy this tab" floating button.
+// Reads the active results page's plain text and copies to the clipboard.
+// Shown only on results pages (3 = Strategy through 9 = Meta Ads).
+const TAB_TO_OUT = {3:'stratOut', 4:'leadOut', 5:'contentOut', 6:'emailOut', 7:'dmOut', 8:'manychatOut', 9:'metaOut'};
+const TAB_TO_LABEL = {3:'Strategy', 4:'Lead Gen + FEO', 5:'Content Plan', 6:'Email Sequence', 7:'DM Scripts', 8:'ManyChat', 9:'Meta Ads'};
+
+function showToast(msg) {
+  let t = document.getElementById('ptmaToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'ptmaToast';
+    t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,0.25);opacity:0;transition:opacity 0.2s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t.__timer);
+  t.__timer = setTimeout(() => { t.style.opacity = '0'; }, 1800);
+}
+
+async function copyCurrentTab() {
+  const outId = TAB_TO_OUT[S.tab];
+  if (!outId) { showToast('Nothing to copy on this tab'); return; }
+  const el = document.getElementById(outId);
+  if (!el || !el.innerText.trim() || el.querySelector('.empty')) {
+    showToast('This tab is empty — generate first');
+    return;
+  }
+  const label = TAB_TO_LABEL[S.tab] || 'Campaign';
+  const text = '═══ ' + label.toUpperCase() + ' ═══\n\n' +
+    el.innerText.replace(/\n{3,}/g, '\n\n').trim() +
+    '\n\n— Generated by PTMA Campaign Planner —';
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Copied "' + label + '" to clipboard ✓');
+  } catch (e) {
+    showToast('Copy failed — ' + e.message);
+  }
+}
+
+function renderCopyButton() {
+  let btn = document.getElementById('ptmaCopyAll');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'ptmaCopyAll';
+    btn.textContent = '📋 Copy entire tab';
+    btn.onclick = copyCurrentTab;
+    btn.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;border:none;padding:12px 18px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:9000;transition:transform 0.15s';
+    btn.onmouseover = () => btn.style.transform = 'translateY(-2px)';
+    btn.onmouseout = () => btn.style.transform = '';
+    document.body.appendChild(btn);
+  }
+  // Show only on results tabs
+  btn.style.display = (S.tab >= 3 && S.tab <= 9) ? 'block' : 'none';
+}
+
+// Re-render the copy button whenever showTab is called.
+const _origShowTab = window.showTab;
+window.showTab = function(n) {
+  _origShowTab(n);
+  renderCopyButton();
+};
+
+// ── RESTORE PREVIOUS CAMPAIGN ON PAGE LOAD ─────────────────────────────────
+// PATCHED 2026-05-22 (round 3): if a previous campaign exists in localStorage,
+// show a banner offering restore. Restoring re-renders every tab from cached
+// JSON — no extra API calls, no cost, no waiting.
+function tryRestoreBanner() {
+  let raw;
+  try { raw = localStorage.getItem(SAVE_KEY); } catch { return; }
+  if (!raw) return;
+  let saved;
+  try { saved = JSON.parse(raw); } catch { return; }
+  if (!saved || !saved.res || !saved.res.strat) return;
+
+  const ageMs = Date.now() - new Date(saved.savedAt || 0).getTime();
+  const ageMin = Math.floor(ageMs / 60000);
+  const ageStr = ageMin < 1 ? 'just now' : ageMin < 60 ? ageMin + ' min ago' : Math.floor(ageMin/60) + 'h ' + (ageMin%60) + 'm ago';
+
+  const bar = document.createElement('div');
+  bar.id = 'ptmaRestoreBar';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:var(--cyanLight);border-bottom:1px solid var(--cyanBorder);padding:12px 20px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;z-index:8000;font-size:13px;color:var(--teal)';
+  bar.innerHTML = '<span><strong>Welcome back.</strong> Found a saved campaign from ' + ageStr + (saved.brief?.offer ? ' — "' + saved.brief.offer + '"' : '') + '.</span>' +
+    '<button id="ptmaRestoreBtn" style="background:var(--teal);color:#fff;border:none;padding:8px 14px;border-radius:7px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Restore it</button>' +
+    '<button id="ptmaDiscardBtn" style="background:transparent;color:var(--teal);border:1px solid var(--teal);padding:8px 14px;border-radius:7px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Start fresh</button>';
+  document.body.appendChild(bar);
+  // Nudge the top of the page down so the bar doesn't cover the header
+  document.body.style.paddingTop = (bar.offsetHeight + 4) + 'px';
+
+  document.getElementById('ptmaRestoreBtn').onclick = () => {
+    try {
+      // Restore brief into the form fields if present
+      const b = saved.brief || {};
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+      setVal('f_niche', b.niche); setVal('f_offer', b.offer); setVal('f_price', b.price);
+      setVal('f_goal', b.goal); setVal('f_ltv', b.ltv); setVal('f_obj', b.obj);
+      setVal('f_month', b.month); setVal('f_start', b.start); setVal('f_launch', b.launch);
+      // Restore state
+      S.lang = saved.lang || null;
+      S.voice = saved.voice || null;
+      S.opts = saved.opts || S.opts;
+      S.f2f = (typeof saved.f2f === 'boolean') ? saved.f2f : true;
+      S.res = saved.res || {};
+      // Re-render every tab we have
+      if (S.res.strat) rStrat(S.res.strat);
+      if (S.res.lead) rLead(S.res.lead);
+      if (S.res.content) rContent(S.res.content);
+      if (S.res.email) rEmail(S.res.email);
+      if (S.res.dm) rDM(S.res.dm);
+      if (S.res.manychat) rManyChat(S.res.manychat, b);
+      if (S.res.meta) rMeta(S.res.meta, b);
+      // Mark all step dots as done
+      for (let i = 0; i < 6; i++) markStep(i, 'done');
+      updateBadges();
+      showTab(3);
+      bar.remove();
+      document.body.style.paddingTop = '';
+      showToast('Restored — all tabs available');
+    } catch (e) {
+      showError('Restore failed: ' + e.message);
+    }
+  };
+  document.getElementById('ptmaDiscardBtn').onclick = () => {
+    clearCampaign();
+    bar.remove();
+    document.body.style.paddingTop = '';
+  };
+}
+
+// Run restore check after DOM is fully ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', tryRestoreBanner);
+} else {
+  tryRestoreBanner();
 }
 </script>
 
