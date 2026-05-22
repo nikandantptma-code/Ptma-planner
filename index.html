@@ -515,6 +515,19 @@ select option { background: #fff; }
     </div>
   </div>
 
+  <!-- PATCHED 2026-05-22 (round 4): Optional funnel conversion rates.
+       If filled in, the KPI Breakdown computes leads → consults → clients
+       backwards from the revenue goal. Leave blank if not tracked yet. -->
+  <div class="card">
+    <div class="card-eyebrow">Funnel Conversion Rates · OPTIONAL</div>
+    <div class="card-title">Do you know how your funnel converts?</div>
+    <div class="card-sub" style="margin-bottom:14px">Leave blank if you don't track these yet. If you do, the KPI section will work backwards from your revenue goal to show exactly how many leads and consults you need.</div>
+    <div class="grid-2">
+      <div class="field"><label>Lead → Consult booking rate (%)</label><input id="f_convLeadConsult" type="number" min="0" max="100" step="1" placeholder="e.g. 30 — out of 100 leads, 30 book a consult"></div>
+      <div class="field"><label>Consult → Sale close rate (%)</label><input id="f_convConsultClose" type="number" min="0" max="100" step="1" placeholder="e.g. 50 — out of 100 consults, 50 buy"></div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-eyebrow">Campaign Details</div>
     <div class="card-title">What is this campaign for?</div>
@@ -622,7 +635,7 @@ select option { background: #fff; }
 })();
 
 // ── STATE ──────────────────────────────────────────────────────────────────
-const S = { tab:0, lang:null, voice:null, langFiles:[], voiceFiles:[], f2f:true, opts:{meta:false,manychat:false,retarget:false}, res:{} };
+const S = { tab:0, lang:null, voice:null, langFiles:[], voiceFiles:[], f2f:true, opts:{meta:false,manychat:false,retarget:false}, res:{}, brief:null };
 
 // ── THE PTMA STANDARD ──────────────────────────────────────────────────────
 const PTMA_STANDARD = `YOU ARE OPERATING TO THE PTMA STANDARD. Every output must meet every rule. No exceptions.
@@ -742,6 +755,9 @@ function bf() {
     price: document.getElementById('f_price').value,
     goal:  document.getElementById('f_goal').value,
     ltv:   document.getElementById('f_ltv')?.value || '',
+    // Optional funnel conversion rates (blank if not tracked)
+    convLeadConsult:  document.getElementById('f_convLeadConsult')?.value || '',
+    convConsultClose: document.getElementById('f_convConsultClose')?.value || '',
     obj:   document.getElementById('f_obj').value,
     month: document.getElementById('f_month').value,
     start: document.getElementById('f_start').value,
@@ -1012,6 +1028,47 @@ function setLoadingSub(text) {
   if (el) el.textContent = text;
 }
 
+// PATCHED 2026-05-22 (round 4): persistent "still generating" pill that
+// stays visible AFTER the full-screen loading dismisses, so coaches know
+// background sections (Content/Email/DM) are still being written.
+let _genPillT0 = 0;
+let _genPillInt = null;
+function showGenPill(text, t0) {
+  let pill = document.getElementById('ptmaGenPill');
+  if (!pill) {
+    pill = document.createElement('div');
+    pill.id = 'ptmaGenPill';
+    pill.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-family:inherit;font-size:12px;font-weight:600;z-index:9000;box-shadow:0 4px 14px rgba(0,0,0,0.2);display:flex;gap:8px;align-items:center';
+    pill.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cyan);animation:ptmaPulse 1.2s infinite"></span><span id="ptmaGenPillText"></span>';
+    // Inject pulse animation
+    if (!document.getElementById('ptmaPulseStyle')) {
+      const style = document.createElement('style');
+      style.id = 'ptmaPulseStyle';
+      style.textContent = '@keyframes ptmaPulse{0%,100%{opacity:1}50%{opacity:0.35}}';
+      document.head.appendChild(style);
+    }
+    document.body.appendChild(pill);
+  }
+  if (t0) _genPillT0 = t0;
+  const update = () => {
+    const el = document.getElementById('ptmaGenPillText');
+    if (!el) return;
+    const s = Math.floor((Date.now() - _genPillT0) / 1000);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    el.textContent = text + ' · ' + m + ':' + String(r).padStart(2,'0');
+  };
+  update();
+  clearInterval(_genPillInt);
+  _genPillInt = setInterval(update, 1000);
+  pill.style.display = 'flex';
+}
+function hideGenPill() {
+  clearInterval(_genPillInt);
+  const pill = document.getElementById('ptmaGenPill');
+  if (pill) pill.style.display = 'none';
+}
+
 function saveCampaign(brief) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
@@ -1037,6 +1094,7 @@ async function generate() {
   // Fresh start — clear any previous saved campaign so we don't restore over the new one
   clearCampaign();
   S.res = {};
+  S.brief = b;
 
   // Show loading, hide pages
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1074,9 +1132,11 @@ async function generate() {
     rLead(lg); S.res.lead=lg; saveCampaign(b);
     markStep(1, 'done');
 
-    // Show the Strategy tab now so coaches see progress while the rest generates
+    // Show the Strategy tab now so coaches see progress while the rest generates.
+    // Show the persistent "still generating" pill so coaches don't think it stopped.
     document.getElementById('loading').classList.remove('active');
     showTab(3);
+    showGenPill('Writing the content plan…', t0);
 
     // ── Step 2: Content Plan (two calls) ──
     markStep(2, 'active'); setLoadingSub('Building your 4-week content plan…');
@@ -1088,6 +1148,7 @@ async function generate() {
 
     // ── Step 3: Email Sequence (two calls) ──
     markStep(3, 'active'); setLoadingSub('Writing the 6-email nurture sequence…');
+    showGenPill('Writing the email sequence…', t0);
     const em1 = await api(sys,pEmail(b,'1-3'),4000);
     const em2 = await api(sys,pEmail(b,'4-6'),4000);
     const em = mergeEmail(em1,em2);
@@ -1096,6 +1157,7 @@ async function generate() {
 
     // ── Step 4: DM Scripts ──
     markStep(4, 'active'); setLoadingSub('Drafting the DM scripts suite…');
+    showGenPill('Drafting the DM scripts…', t0);
     const dm = await api(sys,pDM(b),3500);
     rDM(dm); S.res.dm=dm; saveCampaign(b);
     markStep(4, 'done');
@@ -1103,6 +1165,7 @@ async function generate() {
     // ── Step 5: Optional extras (only if toggled on) ──
     if (b.opts.manychat || b.opts.meta) {
       markStep(5, 'active'); setLoadingSub('Generating optional extras…');
+      showGenPill('Generating optional extras…', t0);
       if(b.opts.manychat){
         const mc = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),3500);
         if(mc){rManyChat(mc,b); S.res.manychat=mc; saveCampaign(b);}
@@ -1115,9 +1178,12 @@ async function generate() {
     markStep(5, 'done');
 
     clearInterval(timerInt);
+    hideGenPill();
+    showToast('Campaign complete ✓');
     updateBadges();
   } catch(e) {
     clearInterval(timerInt);
+    hideGenPill();
     document.getElementById('loading').classList.remove('active');
     showTab(2);
     showError(e.message + ' — Please screenshot this banner and send to PTMA support.');
@@ -1183,9 +1249,67 @@ function rStrat(d){
   if(d.phases?.length){
     h+=`<div class="card"><div class="section-label">Campaign Phases — Jeff Walker Launch Sequence</div>${d.phases.map(p=>`<div class="phase"><div class="phase-title">${p.phase}</div><div class="phase-timing">${p.timing}</div><div class="kv"><div class="k">Objective</div><div class="v">${p.objective}</div></div><div class="kv"><div class="k">Content Focus</div><div class="v">${p.contentFocus}</div></div><div class="kv"><div class="k">Mental Trigger</div><div class="v v-gold">${p.trigger}</div></div></div>`).join('')}</div>`;
   }
-  if(d.kpis?.length){
-    h+=`<div class="kpi-row">${d.kpis.map(k=>`<div class="kpi-card"><div class="kpi-label">${k}</div></div>`).join('')}</div>`;
+  // PATCHED 2026-05-22 (round 4): proper KPI breakdown with computed math.
+  // Round 4b: optional funnel conversion rates compute leads and consults
+  // needed by working backwards from the revenue goal.
+  const b = S.brief || {};
+  const price = parseFloat(b.price) || 0;
+  const goal  = parseFloat(b.goal)  || 0;
+  const ltv   = parseFloat(b.ltv)   || 0;
+  const lcRate = parseFloat(b.convLeadConsult)  || 0;   // % of leads who book a consult
+  const ccRate = parseFloat(b.convConsultClose) || 0;   // % of consults who buy
+  const clientsNeeded = (price > 0 && goal > 0) ? Math.ceil(goal / price) : null;
+  const weeklyTarget  = clientsNeeded ? Math.ceil(clientsNeeded / 4) : null;
+  const ltvGoalClients = (price > 0 && ltv > 0) ? Math.ceil(goal / ltv) : null;
+  // Funnel back-calculation (only if conversion rates are provided)
+  const consultsNeeded = (clientsNeeded && ccRate > 0) ? Math.ceil(clientsNeeded / (ccRate / 100)) : null;
+  const leadsNeeded    = (consultsNeeded && lcRate > 0) ? Math.ceil(consultsNeeded / (lcRate / 100)) : null;
+  const overallConv    = (lcRate > 0 && ccRate > 0) ? +((lcRate * ccRate) / 100).toFixed(1) : null;
+  const fmt = (n) => '£' + Math.round(n).toLocaleString();
+
+  let kpiHtml = '<div class="card card-gold"><div class="section-label">Breakdown of Goals and Targets</div>';
+  if (goal > 0 || price > 0) {
+    kpiHtml += '<div class="grid-2">';
+    if (goal > 0)   kpiHtml += '<div class="kv"><div class="k">Monthly revenue goal</div><div class="v v-gold">' + fmt(goal) + '</div></div>';
+    if (price > 0)  kpiHtml += '<div class="kv"><div class="k">Offer price</div><div class="v">' + fmt(price) + '</div></div>';
+    if (clientsNeeded) kpiHtml += '<div class="kv"><div class="k">New clients needed (front end)</div><div class="v v-cyan">' + clientsNeeded + ' × ' + fmt(price) + ' = ' + fmt(clientsNeeded * price) + '</div></div>';
+    if (weeklyTarget)  kpiHtml += '<div class="kv"><div class="k">Weekly new-client target</div><div class="v">≈ ' + weeklyTarget + ' per week</div></div>';
+    if (ltvGoalClients && ltv > 0) kpiHtml += '<div class="kv"><div class="k">If clients stay for the LTV (' + fmt(ltv) + ')</div><div class="v">just ' + ltvGoalClients + ' new client' + (ltvGoalClients > 1 ? 's' : '') + ' covers the goal</div></div>';
+    kpiHtml += '</div>';
   }
+
+  // Funnel section appears ONLY if at least one conversion rate is provided.
+  if (clientsNeeded && (lcRate > 0 || ccRate > 0)) {
+    kpiHtml += '<div class="section-label" style="margin-top:20px">Working backwards through your funnel</div>';
+    kpiHtml += '<div class="grid-2">';
+    if (consultsNeeded) {
+      const weeklyConsults = Math.ceil(consultsNeeded / 4);
+      kpiHtml += '<div class="kv"><div class="k">Consults needed (at ' + ccRate + '% close rate)</div><div class="v v-cyan">' + consultsNeeded + ' total · ≈ ' + weeklyConsults + ' per week</div></div>';
+    }
+    if (leadsNeeded) {
+      const weeklyLeads = Math.ceil(leadsNeeded / 4);
+      kpiHtml += '<div class="kv"><div class="k">Leads needed (at ' + lcRate + '% consult rate)</div><div class="v v-gold">' + leadsNeeded + ' total · ≈ ' + weeklyLeads + ' per week</div></div>';
+    }
+    if (overallConv) {
+      kpiHtml += '<div class="kv"><div class="k">Overall lead → client conversion</div><div class="v">' + overallConv + '% (≈ 1 in ' + Math.round(100/overallConv) + ' leads becomes a client)</div></div>';
+    }
+    if (lcRate > 0 && ccRate === 0) {
+      kpiHtml += '<div class="kv"><div class="k">Note</div><div class="v" style="font-style:italic">Add your consult → close rate to compute the full leads-needed figure.</div></div>';
+    }
+    if (ccRate > 0 && lcRate === 0) {
+      kpiHtml += '<div class="kv"><div class="k">Note</div><div class="v" style="font-style:italic">Add your lead → consult rate to compute the full leads-needed figure.</div></div>';
+    }
+    kpiHtml += '</div>';
+  }
+
+  if (d.kpis?.length) {
+    kpiHtml += '<div class="section-label" style="margin-top:20px">Campaign KPIs</div>';
+    kpiHtml += '<ul style="margin:0;padding-left:22px;font-size:13px;color:var(--textMid);line-height:1.8">' +
+      d.kpis.map(k => '<li>' + (typeof k === 'string' ? k : Object.values(k || {}).join(' — ')) + '</li>').join('') +
+      '</ul>';
+  }
+  kpiHtml += '</div>';
+  if (goal > 0 || price > 0 || d.kpis?.length) h += kpiHtml;
   if(d.standardCheck){
     h+=`<div class="card card-green"><div class="section-label">PTMA Standard Check</div><p style="font-size:13px;color:var(--textMid);line-height:1.6">${d.standardCheck}</p></div>`;
   }
@@ -1373,21 +1497,261 @@ function showToast(msg) {
   t.__timer = setTimeout(() => { t.style.opacity = '0'; }, 1800);
 }
 
+// PATCHED 2026-05-22 (round 4): proper Markdown output per tab.
+// Builds Markdown from S.res (the structured JSON) so the copy pastes
+// cleanly into Notion, Google Docs, Apple Notes — proper headings,
+// bullet lists, line breaks, NOT one wall of text.
+function ss(v) {
+  // Safe string coerce. Used everywhere a leaf string is expected.
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v)) return v.map(ss).filter(Boolean).join(' · ');
+  if (typeof v === 'object') return Object.values(v).map(ss).filter(Boolean).join(' — ');
+  return String(v);
+}
+
+function mdStrat(d) {
+  if (!d) return '';
+  let m = '# Campaign Strategy\n\n';
+  if (d.campaignName) m += '## ' + ss(d.campaignName) + '\n\n';
+  if (d.whyStatement) m += '**WHY:** _' + ss(d.whyStatement) + '_\n\n';
+  if (d.coreMessage) m += ss(d.coreMessage) + '\n\n';
+  if (d.clientHero || d.coachGuideRole) {
+    m += '## Hero & Guide (StoryBrand)\n\n';
+    if (d.clientHero) m += '- **Client (hero):** ' + ss(d.clientHero) + '\n';
+    if (d.coachGuideRole) m += '- **Coach (guide):** ' + ss(d.coachGuideRole) + '\n';
+    m += '\n';
+  }
+  if (d.threePains) {
+    m += '## Three Levels of Client Pain\n\n';
+    if (d.threePains.external) m += '- **External (visible problem):** ' + ss(d.threePains.external) + '\n';
+    if (d.threePains.internal) m += '- **Internal (how it feels):** ' + ss(d.threePains.internal) + '\n';
+    if (d.threePains.philosophical) m += '- **Philosophical (why it\'s wrong):** ' + ss(d.threePains.philosophical) + '\n';
+    m += '\n';
+  }
+  if (d.valueStack) m += '## Value Stack\n\n' + ss(d.valueStack) + '\n\n';
+  if (d.phases?.length) {
+    m += '## Campaign Phases\n\n';
+    d.phases.forEach(p => {
+      m += '### ' + ss(p.phase) + (p.timing ? ' (' + ss(p.timing) + ')' : '') + '\n';
+      if (p.objective) m += '- **Objective:** ' + ss(p.objective) + '\n';
+      if (p.contentFocus) m += '- **Content focus:** ' + ss(p.contentFocus) + '\n';
+      if (p.trigger) m += '- **Mental trigger:** ' + ss(p.trigger) + '\n';
+      m += '\n';
+    });
+  }
+  // Computed KPI math (with optional funnel back-calculation)
+  const b = S.brief || {};
+  const price = parseFloat(b.price) || 0;
+  const goal  = parseFloat(b.goal)  || 0;
+  const ltv   = parseFloat(b.ltv)   || 0;
+  const lcRate = parseFloat(b.convLeadConsult)  || 0;
+  const ccRate = parseFloat(b.convConsultClose) || 0;
+  if (price > 0 && goal > 0) {
+    const clients = Math.ceil(goal / price);
+    m += '## Breakdown of Goals and Targets\n\n';
+    m += '- **Monthly revenue goal:** £' + Math.round(goal).toLocaleString() + '\n';
+    m += '- **Offer price:** £' + Math.round(price).toLocaleString() + '\n';
+    m += '- **New clients needed:** ' + clients + ' × £' + Math.round(price).toLocaleString() + ' = £' + (clients * price).toLocaleString() + '\n';
+    m += '- **Weekly target:** ≈ ' + Math.ceil(clients / 4) + ' new clients per week\n';
+    if (ltv > 0) m += '- **If clients stay for the LTV (£' + Math.round(ltv).toLocaleString() + '):** just ' + Math.ceil(goal/ltv) + ' new clients covers the goal\n';
+    m += '\n';
+
+    // Funnel back-calculation
+    if (lcRate > 0 || ccRate > 0) {
+      m += '### Working backwards through your funnel\n\n';
+      const consults = (ccRate > 0) ? Math.ceil(clients / (ccRate/100)) : null;
+      const leads    = (consults && lcRate > 0) ? Math.ceil(consults / (lcRate/100)) : null;
+      if (consults) m += '- **Consults needed (at ' + ccRate + '% close rate):** ' + consults + ' total · ≈ ' + Math.ceil(consults/4) + ' per week\n';
+      if (leads)    m += '- **Leads needed (at ' + lcRate + '% consult rate):** ' + leads + ' total · ≈ ' + Math.ceil(leads/4) + ' per week\n';
+      if (lcRate > 0 && ccRate > 0) {
+        const overall = +((lcRate * ccRate) / 100).toFixed(1);
+        m += '- **Overall lead → client conversion:** ' + overall + '% (≈ 1 in ' + Math.round(100/overall) + ' leads becomes a client)\n';
+      }
+      m += '\n';
+    }
+  }
+  if (d.kpis?.length) {
+    m += '## Campaign KPIs\n\n';
+    d.kpis.forEach(k => { m += '- ' + ss(k) + '\n'; });
+    m += '\n';
+  }
+  if (d.standardCheck) m += '## PTMA Standard Check\n\n' + ss(d.standardCheck) + '\n\n';
+  return m;
+}
+
+function mdLead(d) {
+  if (!d) return '';
+  let m = '# Lead Generation + Front-End Offer\n\n';
+  if (d.leadMagnet) {
+    const l = d.leadMagnet;
+    m += '## Attention Offer — Lead Magnet\n\n';
+    if (l.name) m += '### ' + ss(l.name) + '\n';
+    if (l.hook) m += '_"' + ss(l.hook) + '"_\n\n';
+    if (l.format) m += '- **Format:** ' + ss(l.format) + '\n';
+    if (l.pain) m += '- **Pain solved:** ' + ss(l.pain) + '\n';
+    if (l.outcome) m += '- **Quick win:** ' + ss(l.outcome) + '\n';
+    if (l.bridge) m += '- **Bridge to FEO:** ' + ss(l.bridge) + '\n';
+    if (l.valueCheck) m += '- **Value check:** ' + ss(l.valueCheck) + '\n';
+    m += '\n';
+  }
+  if (d.feo) {
+    const f = d.feo;
+    m += '## Conversion Offer — Front-End Offer (FEO)\n\n';
+    if (f.name) m += '### ' + ss(f.name) + '\n';
+    if (f.price) m += '- **Price:** ' + ss(f.price) + '\n';
+    if (f.format) m += '- **Format:** ' + ss(f.format) + '\n';
+    if (f.duration) m += '- **Duration:** ' + ss(f.duration) + '\n';
+    if (f.pain) m += '- **Pain solved:** ' + ss(f.pain) + '\n';
+    if (f.outcome) m += '- **Outcome:** ' + ss(f.outcome) + '\n';
+    if (f.decisionMoment) m += '- **Decision moment:** ' + ss(f.decisionMoment) + '\n';
+    if (f.valueEquation) m += '- **Value equation:** ' + ss(f.valueEquation) + '\n';
+    m += '\n';
+  }
+  if (d.reactivationOption) {
+    const r = d.reactivationOption;
+    m += '## Reactivation Option\n\n';
+    if (r.trigger) m += '- **Trigger:** ' + ss(r.trigger) + '\n';
+    if (r.offer) m += '- **Offer:** ' + ss(r.offer) + '\n';
+    if (r.message) m += '- **Message:** ' + ss(r.message) + '\n';
+    m += '\n';
+  }
+  return m;
+}
+
+function mdContent(d) {
+  if (!d) return '';
+  let m = '# 4-Week Content Plan\n\n';
+  if (d.contentRatio) m += '> **Content ratio (80/20):** ' + ss(d.contentRatio) + '\n\n';
+  (d.weeklyPlan || []).forEach(wk => {
+    m += '## Week ' + ss(wk.week) + (wk.theme ? ' — ' + ss(wk.theme) : '') + '\n\n';
+    (wk.posts || []).forEach((p, i) => {
+      m += '### Post ' + (i+1) + (p.day ? ' — ' + ss(p.day) : '') + (p.format ? ' (' + ss(p.format) + ')' : '') + '\n';
+      if (p.pillar) m += '- **Pillar:** ' + ss(p.pillar) + '\n';
+      if (p.hook) m += '- **Hook:** _"' + ss(p.hook) + '"_\n';
+      if (p.storyArc) m += '- **Story arc:** ' + ss(p.storyArc) + '\n';
+      if (p.cta) m += '- **CTA:** ' + ss(p.cta) + '\n';
+      if (p.documentPrompt) m += '- **Capture (document, don\'t manufacture):** ' + ss(p.documentPrompt) + '\n';
+      if (p.whyItWorks) m += '- **Why it works:** ' + ss(p.whyItWorks) + '\n';
+      m += '\n';
+    });
+  });
+  if (d.gymFloorContent?.length) {
+    m += '## Gym Floor Content\n\n';
+    d.gymFloorContent.forEach(g => m += '- ' + ss(g) + '\n');
+    m += '\n';
+  }
+  return m;
+}
+
+function mdEmail(d) {
+  if (!d || !d.sequence) return '';
+  let m = '# 6-Email Nurture Sequence\n\n';
+  d.sequence.forEach(e => {
+    m += '## Email ' + ss(e.emailNum) + (e.timing ? ' — ' + ss(e.timing) : '') + '\n';
+    if (e.purpose) m += '_' + ss(e.purpose) + '_\n\n';
+    if (e.subjectLine) m += '**Subject:** ' + ss(e.subjectLine) + '\n\n';
+    if (e.hook) m += '**Hook:** _"' + ss(e.hook) + '"_\n\n';
+    if (e.bodyOutline?.length) {
+      m += '**Body outline:**\n';
+      e.bodyOutline.forEach(b => m += '- ' + ss(b) + '\n');
+      m += '\n';
+    }
+    if (e.cta) m += '**CTA:** ' + ss(e.cta) + '\n\n';
+    if (e.jab_or_hook) m += '_Type: ' + ss(e.jab_or_hook) + '_\n\n';
+    m += '---\n\n';
+  });
+  return m;
+}
+
+function mdDM(d) {
+  if (!d) return '';
+  let m = '# DM Scripts Suite\n\n';
+  if (d.coldOutreach) {
+    m += '## Cold Outreach\n\n';
+    if (d.coldOutreach.opener) m += '**Opener:**\n> ' + ss(d.coldOutreach.opener).replace(/\n/g,'\n> ') + '\n\n';
+    if (d.coldOutreach.followUp) m += '**Follow-up (no reply after 48h):**\n> ' + ss(d.coldOutreach.followUp).replace(/\n/g,'\n> ') + '\n\n';
+  }
+  if (d.warmLeadScript) {
+    const w = d.warmLeadScript;
+    m += '## Warm Lead Script\n\n';
+    if (w.opener) m += '**Opener:**\n> ' + ss(w.opener) + '\n\n';
+    if (w.valueAdd) m += '**Value add first:**\n> ' + ss(w.valueAdd) + '\n\n';
+    if (w.bridge) m += '**Bridge to FEO:**\n> ' + ss(w.bridge) + '\n\n';
+    if (w.closingScript) m += '**Close:**\n> ' + ss(w.closingScript) + '\n\n';
+  }
+  if (d.objectionHandles?.length) {
+    m += '## Objection Handles\n\n';
+    d.objectionHandles.forEach(o => {
+      m += '**"' + ss(o.objection) + '"**\n> ' + ss(o.response) + '\n\n';
+    });
+  }
+  if (d.gymFloorConversation) {
+    const g = d.gymFloorConversation;
+    m += '## Gym Floor Conversation\n\n';
+    if (g.opener) m += '**How to start:**\n> ' + ss(g.opener) + '\n\n';
+    if (g.bridge) m += '**Bridge to contact:**\n> ' + ss(g.bridge) + '\n\n';
+    if (g.followUp) m += '**Follow-up DM after:**\n> ' + ss(g.followUp) + '\n\n';
+  }
+  if (d.reactivationDM) {
+    m += '## Reactivation DM\n\n';
+    if (d.reactivationDM.target) m += '_Target:_ ' + ss(d.reactivationDM.target) + '\n\n';
+    if (d.reactivationDM.opener) m += '> ' + ss(d.reactivationDM.opener) + '\n\n';
+    if (d.reactivationDM.offer) m += '**Offer:** ' + ss(d.reactivationDM.offer) + '\n\n';
+  }
+  return m;
+}
+
+function mdGenericFromObj(title, d) {
+  if (!d) return '';
+  // Best-effort markdown for ManyChat / Meta — walk keys, render as sections.
+  let m = '# ' + title + '\n\n';
+  const walk = (obj, depth = 0) => {
+    if (obj == null) return '';
+    if (typeof obj !== 'object') return ss(obj) + '\n';
+    if (Array.isArray(obj)) return obj.map(x => '- ' + (typeof x === 'object' ? '\n' + walk(x, depth+1).replace(/^/gm, '  ') : ss(x))).join('\n') + '\n';
+    let out = '';
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      const heading = '#'.repeat(Math.min(depth + 2, 4)) + ' ' + k.replace(/([A-Z])/g, ' $1').trim();
+      if (v == null || v === '') continue;
+      if (typeof v === 'object') {
+        out += heading + '\n' + walk(v, depth + 1) + '\n';
+      } else {
+        out += '- **' + k.replace(/([A-Z])/g, ' $1').trim() + ':** ' + ss(v) + '\n';
+      }
+    }
+    return out;
+  };
+  m += walk(d);
+  return m;
+}
+
+const TAB_TO_MD = {
+  3: () => mdStrat(S.res.strat),
+  4: () => mdLead(S.res.lead),
+  5: () => mdContent(S.res.content),
+  6: () => mdEmail(S.res.email),
+  7: () => mdDM(S.res.dm),
+  8: () => mdGenericFromObj('ManyChat Flow', S.res.manychat),
+  9: () => mdGenericFromObj('Meta Ads', S.res.meta)
+};
+
 async function copyCurrentTab() {
-  const outId = TAB_TO_OUT[S.tab];
-  if (!outId) { showToast('Nothing to copy on this tab'); return; }
-  const el = document.getElementById(outId);
-  if (!el || !el.innerText.trim() || el.querySelector('.empty')) {
+  const mdFn = TAB_TO_MD[S.tab];
+  if (!mdFn) { showToast('Nothing to copy on this tab'); return; }
+  const md = mdFn();
+  if (!md || md.trim().length < 30) {
     showToast('This tab is empty — generate first');
     return;
   }
   const label = TAB_TO_LABEL[S.tab] || 'Campaign';
-  const text = '═══ ' + label.toUpperCase() + ' ═══\n\n' +
-    el.innerText.replace(/\n{3,}/g, '\n\n').trim() +
-    '\n\n— Generated by PTMA Campaign Planner —';
+  const niche = S.brief?.niche ? ' — ' + S.brief.niche : '';
+  const offer = S.brief?.offer ? '\n_For: ' + S.brief.offer + '_' : '';
+  const out = md.replace(/\n{3,}/g, '\n\n') + '\n\n---\n_Generated by the PTMA Campaign Planner' + niche + '_' + offer + '\n';
   try {
-    await navigator.clipboard.writeText(text);
-    showToast('Copied "' + label + '" to clipboard ✓');
+    await navigator.clipboard.writeText(out);
+    showToast('Copied "' + label + '" as Markdown ✓');
   } catch (e) {
     showToast('Copy failed — ' + e.message);
   }
@@ -1450,12 +1814,14 @@ function tryRestoreBanner() {
       setVal('f_niche', b.niche); setVal('f_offer', b.offer); setVal('f_price', b.price);
       setVal('f_goal', b.goal); setVal('f_ltv', b.ltv); setVal('f_obj', b.obj);
       setVal('f_month', b.month); setVal('f_start', b.start); setVal('f_launch', b.launch);
+      setVal('f_convLeadConsult', b.convLeadConsult); setVal('f_convConsultClose', b.convConsultClose);
       // Restore state
       S.lang = saved.lang || null;
       S.voice = saved.voice || null;
       S.opts = saved.opts || S.opts;
       S.f2f = (typeof saved.f2f === 'boolean') ? saved.f2f : true;
       S.res = saved.res || {};
+      S.brief = saved.brief || null;
       // Re-render every tab we have
       if (S.res.strat) rStrat(S.res.strat);
       if (S.res.lead) rLead(S.res.lead);
