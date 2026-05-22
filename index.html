@@ -628,7 +628,9 @@ async function api(system, user, maxTok=2000) {
     })
   });
   const d = await r.json();
+  console.log('API response status:', r.status, 'error:', d.error, 'content length:', JSON.stringify(d.content||[]).length);
   const t = (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+  console.log('Text length:', t.length, 'first 50:', t.substring(0,50));
   try {
     const clean = t.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
     try { return JSON.parse(clean); } catch(e1) {
@@ -927,7 +929,11 @@ async function generate() {
 
   try {
     // Render each result as it arrives - don't wait for all calls
+    console.log('Calling strategy API...');
+    console.log('sys length:', sys.length);
+    console.log('pStrat output:', pStrat(b).substring(0,200));
     const st2 = await api(sys,pStrat(b),2000);
+    console.log('st2 result:', st2);
     if(!st2) throw new Error('Strategy could not be generated. Please try again.');
     rStrat(st2); S.res.strat=st2;
     
