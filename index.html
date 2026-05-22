@@ -515,16 +515,45 @@ select option { background: #fff; }
     </div>
   </div>
 
-  <!-- PATCHED 2026-05-22 (round 4): Optional funnel conversion rates.
-       If filled in, the KPI Breakdown computes leads → consults → clients
-       backwards from the revenue goal. Leave blank if not tracked yet. -->
+  <!-- PATCHED 2026-05-22 (Tier 1): Sales path + distribution channels.
+       Sales path tells the tool HOW the coach sells (calls, direct, application,
+       gym floor). Channel ticks tell the tool WHERE leads come from. Both
+       feed the lead magnet, FEO, KPI and DM outputs so they fit the real
+       business — instead of defaulting to PDF lead magnets and 1:1 Zoom FEOs. -->
   <div class="card">
-    <div class="card-eyebrow">Funnel Conversion Rates · OPTIONAL</div>
-    <div class="card-title">Do you know how your funnel converts?</div>
-    <div class="card-sub" style="margin-bottom:14px">Leave blank if you don't track these yet. If you do, the KPI section will work backwards from your revenue goal to show exactly how many leads and consults you need.</div>
+    <div class="card-eyebrow">How You Sell</div>
+    <div class="card-title">What's your sales path?</div>
+    <div class="card-sub" style="margin-bottom:14px">Pick the main way a lead becomes a paying client. This changes the funnel maths and the conversion rate labels below.</div>
+    <div class="field">
+      <label>Sales path</label>
+      <select id="f_salesPath" onchange="updateFunnelLabels()">
+        <option value="calls">Sales calls / consultations (inbound or outbound)</option>
+        <option value="direct">Direct purchase from a landing page (no call)</option>
+        <option value="application">Application form (no live call — coach reviews + accepts)</option>
+        <option value="gymfloor">Gym floor only (in-person conversations)</option>
+        <option value="email">Email or DM sequence to direct buy</option>
+        <option value="mixed">Mixed / other</option>
+      </select>
+    </div>
+    <div class="card-sub" style="margin-top:18px;margin-bottom:8px"><strong>Conversion rates · optional</strong> — leave blank if you don't track these yet. If you do, the KPI section will work backwards from your revenue goal.</div>
     <div class="grid-2">
-      <div class="field"><label>Lead → Consult booking rate (%)</label><input id="f_convLeadConsult" type="number" min="0" max="100" step="1" placeholder="e.g. 30 — out of 100 leads, 30 book a consult"></div>
-      <div class="field"><label>Consult → Sale close rate (%)</label><input id="f_convConsultClose" type="number" min="0" max="100" step="1" placeholder="e.g. 50 — out of 100 consults, 50 buy"></div>
+      <div class="field"><label id="lbl_conv1">Lead → Consult booking rate (%)</label><input id="f_convLeadConsult" type="number" min="0" max="100" step="1" placeholder="e.g. 30"></div>
+      <div class="field"><label id="lbl_conv2">Consult → Sale close rate (%)</label><input id="f_convConsultClose" type="number" min="0" max="100" step="1" placeholder="e.g. 50"></div>
+    </div>
+  </div>
+
+  <!-- PATCHED 2026-05-22 (Tier 1): Distribution channel ticks. -->
+  <div class="card">
+    <div class="card-eyebrow">Distribution Channels</div>
+    <div class="card-title">Where will the campaign show up?</div>
+    <div class="card-sub" style="margin-bottom:14px">Tick everything that applies. The lead magnet, FEO and DM scripts will be tailored to what you actually use.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <label class="toggle" style="cursor:pointer"><input type="checkbox" id="f_chan_landing" style="margin-right:8px"> Landing page</label>
+      <label class="toggle" style="cursor:pointer"><input type="checkbox" id="f_chan_gymfloor" style="margin-right:8px"> Gym floor</label>
+      <label class="toggle" style="cursor:pointer"><input type="checkbox" id="f_chan_social" style="margin-right:8px" checked> Social media</label>
+      <label class="toggle" style="cursor:pointer"><input type="checkbox" id="f_chan_email" style="margin-right:8px"> Email list</label>
+      <label class="toggle" style="cursor:pointer"><input type="checkbox" id="f_chan_dm" style="margin-right:8px"> DM / messenger</label>
+      <label class="toggle" style="cursor:pointer"><input type="checkbox" id="f_chan_paid" style="margin-right:8px"> Paid ads</label>
     </div>
   </div>
 
@@ -755,15 +784,56 @@ function bf() {
     price: document.getElementById('f_price').value,
     goal:  document.getElementById('f_goal').value,
     ltv:   document.getElementById('f_ltv')?.value || '',
-    // Optional funnel conversion rates (blank if not tracked)
+    // TIER 1: sales path + funnel rates (rate meanings depend on path)
+    salesPath: document.getElementById('f_salesPath')?.value || 'calls',
     convLeadConsult:  document.getElementById('f_convLeadConsult')?.value || '',
     convConsultClose: document.getElementById('f_convConsultClose')?.value || '',
+    // TIER 1: distribution channel ticks
+    channels: {
+      landing:  !!document.getElementById('f_chan_landing')?.checked,
+      gymfloor: !!document.getElementById('f_chan_gymfloor')?.checked,
+      social:   !!document.getElementById('f_chan_social')?.checked,
+      email:    !!document.getElementById('f_chan_email')?.checked,
+      dm:       !!document.getElementById('f_chan_dm')?.checked,
+      paid:     !!document.getElementById('f_chan_paid')?.checked
+    },
     obj:   document.getElementById('f_obj').value,
     month: document.getElementById('f_month').value,
     start: document.getElementById('f_start').value,
     launch:document.getElementById('f_launch').value,
     f2f:   S.f2f, opts: S.opts
   };
+}
+
+// TIER 1: dynamic conversion-rate labels based on the chosen sales path.
+// The same two input fields are reused, but renamed so the maths reads naturally.
+const FUNNEL_LABELS = {
+  calls:       { c1: 'Lead → Consult booking rate (%)',       c2: 'Consult → Sale close rate (%)',     ph1: 'e.g. 30 — leads who book a consult', ph2: 'e.g. 50 — consults who buy',     mid: 'consults' },
+  direct:      { c1: 'Landing page visitor → Lead rate (%)',  c2: 'Lead → Sale conversion rate (%)',   ph1: 'e.g. 25 — page visitors who opt in', ph2: 'e.g. 15 — leads who buy direct', mid: 'leads' },
+  application: { c1: 'Lead → Application submission (%)',     c2: 'Application → Sale close (%)',       ph1: 'e.g. 40 — leads who apply',           ph2: 'e.g. 60 — applicants accepted who buy', mid: 'applications' },
+  gymfloor:    { c1: 'Gym floor conversation → Lead (%)',     c2: 'Lead → Sale conversion (%)',         ph1: 'e.g. 50 — chats that capture a lead', ph2: 'e.g. 25 — leads who become clients',   mid: 'qualified leads' },
+  email:       { c1: 'Email/DM open or reply rate (%)',       c2: 'Engaged contact → Sale rate (%)',    ph1: 'e.g. 35 — opens/replies',             ph2: 'e.g. 10 — engaged who buy',             mid: 'engaged contacts' },
+  mixed:       { c1: 'Step 1 conversion rate (%)',            c2: 'Step 2 conversion rate (%)',         ph1: 'first conversion step %',             ph2: 'second conversion step %',              mid: 'next-step contacts' }
+};
+function updateFunnelLabels() {
+  const sel = document.getElementById('f_salesPath');
+  if (!sel) return;
+  const k = sel.value || 'calls';
+  const cfg = FUNNEL_LABELS[k] || FUNNEL_LABELS.calls;
+  const l1 = document.getElementById('lbl_conv1');
+  const l2 = document.getElementById('lbl_conv2');
+  const i1 = document.getElementById('f_convLeadConsult');
+  const i2 = document.getElementById('f_convConsultClose');
+  if (l1) l1.textContent = cfg.c1;
+  if (l2) l2.textContent = cfg.c2;
+  if (i1) i1.placeholder = cfg.ph1;
+  if (i2) i2.placeholder = cfg.ph2;
+}
+// Set initial labels on page load.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', updateFunnelLabels);
+} else {
+  setTimeout(updateFunnelLabels, 0);
 }
 
 // ── NAVIGATION ─────────────────────────────────────────────────────────────
@@ -1191,15 +1261,86 @@ async function generate() {
 }
 
 // ── PROMPTS ────────────────────────────────────────────────────────────────
+// TIER 1: shared helper — sales path + channel context for prompts.
+// Output reads like: "Sales path: gym floor only. Active channels: gym floor, social, email."
+function pathChannelsCtx(b){
+  const pathLbl = ({
+    calls:       'sales calls / consults',
+    direct:      'direct purchase from a landing page (no sales call)',
+    application: 'application form review (no live call)',
+    gymfloor:    'gym floor only (in-person conversations, no calls or landing pages)',
+    email:       'email or DM sequence to direct buy',
+    mixed:       'mixed / multiple paths'
+  })[b.salesPath || 'calls'] || 'sales calls';
+  const ch = b.channels || {};
+  const channelList = [
+    ch.landing  && 'landing page',
+    ch.gymfloor && 'gym floor',
+    ch.social   && 'social media',
+    ch.email    && 'email list',
+    ch.dm       && 'DMs / messenger',
+    ch.paid     && 'paid ads'
+  ].filter(Boolean).join(', ') || 'unspecified';
+  return ' | Sales path: ' + pathLbl + ' | Active channels: ' + channelList;
+}
+
 function pStrat(b){
   const units = b.price && b.goal ? Math.ceil(parseInt(b.goal)/parseInt(b.price)) : null;
   const revenueNote = units ? 'Revenue goal: ' + b.goal + ' = exactly ' + units + ' clients at ' + b.price + ' each. KPIs must hit this exactly.' : '';
-  return 'Campaign strategy. Niche: ' + b.niche + ' | Offer: "' + b.offer + '"' + (b.price ? ' at ' + b.price : '') + ' | Objective: ' + b.obj + ' | Month: ' + b.month + ' | Delivery: ' + (b.f2f ? 'F2F+Online' : 'Online only') + (revenueNote ? ' | ' + revenueNote : '') +
+  return 'Campaign strategy. Niche: ' + b.niche + ' | Offer: "' + b.offer + '"' + (b.price ? ' at ' + b.price : '') + ' | Objective: ' + b.obj + ' | Month: ' + b.month + ' | Delivery: ' + (b.f2f ? 'F2F+Online' : 'Online only') + pathChannelsCtx(b) + (revenueNote ? ' | ' + revenueNote : '') +
+    '\nIMPORTANT: KPIs must reflect the sales path and active channels above. If the coach is gym-floor-only, do NOT suggest landing-page or paid-ad KPIs. Each KPI must be a number target tied to a specific channel.' +
     '\nReturn: {"campaignName":"","whyStatement":"","coreMessage":"","clientHero":"","coachGuideRole":"","threePains":{"external":"","internal":"","philosophical":""},"valueStack":"","phases":[{"phase":"","timing":"","objective":"","contentFocus":"","trigger":""}],"kpis":[],"standardCheck":""}';
 }
 
-function pLead(b){return `Lead gen + FEO. Niche: ${b.niche} | Offer: "${b.offer}" | Objective: ${b.obj} | Month: ${b.month} | Delivery: ${b.f2f?'F2F+Online':'Online only'}
-Return: {"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":""},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":""},"reactivationOption":{"trigger":"","offer":"","message":""}}`;}
+// TIER 1: Lead magnet + FEO prompt rewritten to FORCE FORMAT VARIETY.
+// The old prompt always returned 'PDF guide' lead magnets and £27 1:1 Zoom FEOs
+// because the model gravitated to the simplest defaults. The new prompt:
+//   - bans PDF as the default
+//   - presents a buffet of formats and demands the model picks the BEST FIT for the
+//     niche, sales path, and active channels (not the easiest)
+//   - same buffet for the FEO: bans 1:1 Zoom + £27 unless the coach explicitly
+//     anchors there
+function pLead(b){
+  const price = parseInt(b.price) || 0;
+  const ch = b.channels || {};
+  const gymOnly = b.salesPath === 'gymfloor' || (ch.gymfloor && !ch.landing && !ch.social && !ch.email && !ch.paid);
+  return 'Lead gen + Front-End Offer (FEO). Niche: ' + b.niche + ' | Core offer: "' + b.offer + '"' + (price ? ' at £' + price : '') + ' | Objective: ' + b.obj + ' | Month: ' + b.month + ' | Delivery: ' + (b.f2f?'F2F+Online':'Online only') + pathChannelsCtx(b) +
+'\n\nCRITICAL RULES — apply both:\n' +
+'\n1) LEAD MAGNET (attention offer). Pick the BEST-FIT format for this coach\'s niche, sales path, and channels. DO NOT default to "PDF guide" unless a PDF is genuinely the strongest format for this specific niche + channels.\n' +
+'Format buffet — pick one that fits, name it concretely (not "a guide"):\n' +
+'   • Short challenge (3, 7, 14 or 30 days) — usually email + accountability\n' +
+'   • Webinar / live workshop / live training\n' +
+'   • Recorded mini-masterclass\n' +
+'   • Quiz or scorecard with personalised result\n' +
+'   • Food diary review + personal feedback\n' +
+'   • Technique correction session / form check\n' +
+'   • Gym-floor taster session (only if gym floor is an active channel)\n' +
+'   • Free 1-week trial / day pass (only if gym floor / studio is the venue)\n' +
+'   • Free assessment (body, fitness, lifestyle, posture)\n' +
+'   • Giveaway / competition (paired with capture mechanism)\n' +
+'   • Swipe file / template (workout plan, meal plan, weekly schedule)\n' +
+'   • Email mini-course (e.g. "5-day fat loss myth-buster")\n' +
+'   • Audio / podcast episode + opt-in\n' +
+'   • Live Q&A session\n' +
+'   • PDF / cheat sheet — ONLY if it\'s the best-fit answer, never as default\n' +
+(gymOnly ? '   ⚠️ This coach uses GYM FLOOR ONLY — the lead magnet MUST be deliverable on the gym floor (no landing page, no online opt-in). Use gym-floor taster, technique correction, free assessment, or a paper questionnaire.\n' : '') +
+'\n2) FRONT-END OFFER (FEO). The FEO is the conversion offer — it delivers real value BEFORE the sales conversation. It is NOT a free consultation. Pick the best-fit format. DO NOT default to "live 1-to-1 Zoom call" and DO NOT default to £27 unless the coach\'s core offer pricing clearly anchors there.\n' +
+'FEO format buffet — pick one that fits:\n' +
+'   • Paid 1-2 week kickstart / accelerator\n' +
+'   • Paid challenge (3-, 7-, 14-day) — already including coaching\n' +
+'   • 3- or 4-session intro pack at the gym\n' +
+'   • Body composition + nutrition consultation (paid, deliverable, leaves them with a plan)\n' +
+'   • Fitness assessment + personalised plan + 1 review session\n' +
+'   • Group taster month (small group sessions at intro price)\n' +
+'   • Postural / movement assessment + correction plan\n' +
+'   • Habit-building 30-day micro-programme\n' +
+'   • Done-for-you meal plan + 1 review call\n' +
+'   • Scorecard + 30-min review (only if the scorecard is the lead magnet)\n' +
+'Price the FEO based on the core offer price — typically 5-15% of the core offer price, NOT a fixed £27.' +
+(price ? '\nFor THIS coach with a core offer at £' + price + ', sensible FEO price band: £' + Math.max(15, Math.round(price * 0.05)) + ' to £' + Math.round(price * 0.15) + '.\n' : '\n') +
+'\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
+'{"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":"","whyThisFormat":""},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":"","whyThisFormat":""},"reactivationOption":{"trigger":"","offer":"","message":""}}';
+}
 
 function pContent(b,weeks){
   const wk = weeks==='1-2' ? 'weeks 1 and 2 ONLY' : 'weeks 3 and 4 ONLY';
@@ -1215,8 +1356,65 @@ function pEmail(b,nums){
     '\nReturn: {"sequence":[{"emailNum":'+startN+',"timing":"","purpose":"","subjectLine":"","hook":"","bodyOutline":[],"cta":"","jab_or_hook":"jab"}]}';
 }
 
-function pDM(b){return `DM scripts suite. Niche: ${b.niche} | Offer: "${b.offer}" | Month: ${b.month}
-Return: {"coldOutreach":{"opener":"","followUp":""},"warmLeadScript":{"opener":"","valueAdd":"","bridge":"","closingScript":""},"objectionHandles":[{"objection":"","response":""},{"objection":"","response":""},{"objection":"","response":""}],"reactivationDM":{"target":"","opener":"","offer":""},"gymFloorConversation":{"opener":"","bridge":"","followUp":""}}`;}
+// TIER 1: DM Scripts rebuilt around real-world scenarios — not cold spray.
+// Every script has a TRIGGER context so the coach knows when to use it.
+// "Cold outreach" is renamed to "Welcome DM for new social followers" —
+// the only situation most coaches actually use a proactive DM.
+function pDM(b){return `DM scripts suite for a fitness coach. Niche: ${b.niche} | Core offer: "${b.offer}" | Month: ${b.month}${pathChannelsCtx(b)}
+
+TONE — APPLY EVERY SCRIPT:
+- Relationship-first, value-first. NOT a salesperson.
+- Conversational, human, curious. NEVER pushy, NEVER scripted-sounding.
+- Mention the person's situation, not just the offer.
+- Lead with care + curiosity. Offer is mentioned at most ONCE per script.
+- No "DM 'YES' to learn more" or other spammy markers.
+- Each script must feel like the coach actually wrote it — not a template.
+
+Each script must include a TRIGGER (when to use it) and the SCRIPT itself.
+Use the natural openers people actually type in a phone — short sentences, line breaks, no business-speak.
+
+Return this EXACT JSON shape (no extra fields, no markdown fences):
+{
+  "welcomeDM": {
+    "trigger": "Someone follows the coach on Instagram / TikTok / Facebook for the first time",
+    "opener": "",
+    "followUp": ""
+  },
+  "storyReplyScript": {
+    "trigger": "Someone replies to or reacts to the coach's Instagram story",
+    "opener": "",
+    "bridgeToConversation": ""
+  },
+  "postEngagementScript": {
+    "trigger": "Someone likes or comments on a post (especially one related to the FEO topic)",
+    "opener": "",
+    "valueAdd": "",
+    "bridgeToConversation": ""
+  },
+  "inboundInquiryScript": {
+    "trigger": "Someone DMs the coach asking about the offer or wanting more info",
+    "opener": "",
+    "qualifyingQuestion": "",
+    "nextStep": ""
+  },
+  "leadAdReplyScript": {
+    "trigger": "Someone has just submitted a lead via Meta lead ad — immediate first message",
+    "opener": "",
+    "valueAdd": "",
+    "nextStep": ""
+  },
+  "objectionHandles": [
+    {"objection": "(common objection 1 in this niche — e.g. price, time, tried-and-failed)", "response": ""},
+    {"objection": "(common objection 2)", "response": ""},
+    {"objection": "(common objection 3)", "response": ""}
+  ],
+  "reactivationDM": {
+    "trigger": "Coach reaches out to an old enquirer, ex-client, or past lead-magnet downloader who went quiet",
+    "target": "",
+    "opener": "",
+    "offer": ""
+  }
+}`;}
 
 function pManyChat(b){
   return 'ManyChat automation flow. Niche: '+b.niche+' | Offer: "'+b.offer+'" | Month: '+b.month+'\nReturn: {"welcomeFlow":{"trigger":"","opener":"","quickReplies":[],"leadCapture":""},"leadMagnetFlow":{"trigger":"","deliveryMessage":"","followUp1":"","followUp2":"","bridgeToFEO":""},"gymFloorFlow":{"trigger":"","opener":"","qualifier":"","bookingCTA":""},"broadcastMessages":[{"timing":"","purpose":"","message":"","quickReplies":[]}],"keywordTriggers":[{"keyword":"","response":"","action":""}]}';
@@ -1249,64 +1447,82 @@ function rStrat(d){
   if(d.phases?.length){
     h+=`<div class="card"><div class="section-label">Campaign Phases — Jeff Walker Launch Sequence</div>${d.phases.map(p=>`<div class="phase"><div class="phase-title">${p.phase}</div><div class="phase-timing">${p.timing}</div><div class="kv"><div class="k">Objective</div><div class="v">${p.objective}</div></div><div class="kv"><div class="k">Content Focus</div><div class="v">${p.contentFocus}</div></div><div class="kv"><div class="k">Mental Trigger</div><div class="v v-gold">${p.trigger}</div></div></div>`).join('')}</div>`;
   }
-  // PATCHED 2026-05-22 (round 4): proper KPI breakdown with computed math.
-  // Round 4b: optional funnel conversion rates compute leads and consults
-  // needed by working backwards from the revenue goal.
+  // PATCHED 2026-05-22 (Tier 1): KPI breakdown with:
+  //  - REAL campaign weeks (Start → Launch), not /4
+  //  - Sales-path-aware funnel labels
+  //  - Card/grid Campaign KPIs (no more plain bullets)
   const b = S.brief || {};
-  const price = parseFloat(b.price) || 0;
-  const goal  = parseFloat(b.goal)  || 0;
-  const ltv   = parseFloat(b.ltv)   || 0;
-  const lcRate = parseFloat(b.convLeadConsult)  || 0;   // % of leads who book a consult
-  const ccRate = parseFloat(b.convConsultClose) || 0;   // % of consults who buy
+  const price  = parseFloat(b.price) || 0;
+  const goal   = parseFloat(b.goal)  || 0;
+  const ltv    = parseFloat(b.ltv)   || 0;
+  const lcRate = parseFloat(b.convLeadConsult)  || 0;
+  const ccRate = parseFloat(b.convConsultClose) || 0;
+  const path   = b.salesPath || 'calls';
+  const funCfg = FUNNEL_LABELS[path] || FUNNEL_LABELS.calls;
+  const midLbl = funCfg.mid;
+  // Compute REAL campaign weeks from Start → Launch dates (fallback to 4).
+  let weeks = 4;
+  if (b.start && b.launch) {
+    const ms = new Date(b.launch).getTime() - new Date(b.start).getTime();
+    if (ms > 0) weeks = Math.max(1, Math.round(ms / (7 * 24 * 60 * 60 * 1000)));
+  }
+  const weeksLabel = weeks + '-week campaign window (' + (b.start || '?') + ' → ' + (b.launch || '?') + ')';
   const clientsNeeded = (price > 0 && goal > 0) ? Math.ceil(goal / price) : null;
-  const weeklyTarget  = clientsNeeded ? Math.ceil(clientsNeeded / 4) : null;
+  const weeklyTarget  = clientsNeeded ? Math.ceil(clientsNeeded / weeks) : null;
   const ltvGoalClients = (price > 0 && ltv > 0) ? Math.ceil(goal / ltv) : null;
-  // Funnel back-calculation (only if conversion rates are provided)
-  const consultsNeeded = (clientsNeeded && ccRate > 0) ? Math.ceil(clientsNeeded / (ccRate / 100)) : null;
-  const leadsNeeded    = (consultsNeeded && lcRate > 0) ? Math.ceil(consultsNeeded / (lcRate / 100)) : null;
-  const overallConv    = (lcRate > 0 && ccRate > 0) ? +((lcRate * ccRate) / 100).toFixed(1) : null;
+  const midNeeded   = (clientsNeeded && ccRate > 0) ? Math.ceil(clientsNeeded / (ccRate / 100)) : null;
+  const leadsNeeded = (midNeeded && lcRate > 0) ? Math.ceil(midNeeded / (lcRate / 100)) : null;
+  const overallConv = (lcRate > 0 && ccRate > 0) ? +((lcRate * ccRate) / 100).toFixed(1) : null;
   const fmt = (n) => '£' + Math.round(n).toLocaleString();
 
   let kpiHtml = '<div class="card card-gold"><div class="section-label">Breakdown of Goals and Targets</div>';
+  kpiHtml += '<div style="font-size:12px;color:var(--textSub);margin-bottom:10px">Based on ' + weeksLabel + '</div>';
   if (goal > 0 || price > 0) {
     kpiHtml += '<div class="grid-2">';
     if (goal > 0)   kpiHtml += '<div class="kv"><div class="k">Monthly revenue goal</div><div class="v v-gold">' + fmt(goal) + '</div></div>';
     if (price > 0)  kpiHtml += '<div class="kv"><div class="k">Offer price</div><div class="v">' + fmt(price) + '</div></div>';
     if (clientsNeeded) kpiHtml += '<div class="kv"><div class="k">New clients needed (front end)</div><div class="v v-cyan">' + clientsNeeded + ' × ' + fmt(price) + ' = ' + fmt(clientsNeeded * price) + '</div></div>';
-    if (weeklyTarget)  kpiHtml += '<div class="kv"><div class="k">Weekly new-client target</div><div class="v">≈ ' + weeklyTarget + ' per week</div></div>';
+    if (weeklyTarget)  kpiHtml += '<div class="kv"><div class="k">Weekly new-client target</div><div class="v">≈ ' + weeklyTarget + ' per week · over ' + weeks + ' weeks</div></div>';
     if (ltvGoalClients && ltv > 0) kpiHtml += '<div class="kv"><div class="k">If clients stay for the LTV (' + fmt(ltv) + ')</div><div class="v">just ' + ltvGoalClients + ' new client' + (ltvGoalClients > 1 ? 's' : '') + ' covers the goal</div></div>';
     kpiHtml += '</div>';
   }
 
-  // Funnel section appears ONLY if at least one conversion rate is provided.
+  // Funnel section uses sales-path-aware labels and the REAL campaign weeks.
   if (clientsNeeded && (lcRate > 0 || ccRate > 0)) {
     kpiHtml += '<div class="section-label" style="margin-top:20px">Working backwards through your funnel</div>';
+    kpiHtml += '<div style="font-size:12px;color:var(--textSub);margin-bottom:10px">Sales path: ' +
+      ({calls:'Sales calls / consults', direct:'Direct purchase from landing page', application:'Application form', gymfloor:'Gym floor only', email:'Email or DM sequence', mixed:'Mixed / other'}[path] || path) +
+      '</div>';
     kpiHtml += '<div class="grid-2">';
-    if (consultsNeeded) {
-      const weeklyConsults = Math.ceil(consultsNeeded / 4);
-      kpiHtml += '<div class="kv"><div class="k">Consults needed (at ' + ccRate + '% close rate)</div><div class="v v-cyan">' + consultsNeeded + ' total · ≈ ' + weeklyConsults + ' per week</div></div>';
+    if (midNeeded) {
+      const weeklyMid = Math.ceil(midNeeded / weeks);
+      kpiHtml += '<div class="kv"><div class="k">' + (midLbl[0].toUpperCase()+midLbl.slice(1)) + ' needed (at ' + ccRate + '% close rate)</div><div class="v v-cyan">' + midNeeded + ' total · ≈ ' + weeklyMid + ' per week</div></div>';
     }
     if (leadsNeeded) {
-      const weeklyLeads = Math.ceil(leadsNeeded / 4);
-      kpiHtml += '<div class="kv"><div class="k">Leads needed (at ' + lcRate + '% consult rate)</div><div class="v v-gold">' + leadsNeeded + ' total · ≈ ' + weeklyLeads + ' per week</div></div>';
+      const weeklyLeads = Math.ceil(leadsNeeded / weeks);
+      kpiHtml += '<div class="kv"><div class="k">Leads needed (at ' + lcRate + '% upstream rate)</div><div class="v v-gold">' + leadsNeeded + ' total · ≈ ' + weeklyLeads + ' per week</div></div>';
     }
     if (overallConv) {
       kpiHtml += '<div class="kv"><div class="k">Overall lead → client conversion</div><div class="v">' + overallConv + '% (≈ 1 in ' + Math.round(100/overallConv) + ' leads becomes a client)</div></div>';
     }
     if (lcRate > 0 && ccRate === 0) {
-      kpiHtml += '<div class="kv"><div class="k">Note</div><div class="v" style="font-style:italic">Add your consult → close rate to compute the full leads-needed figure.</div></div>';
+      kpiHtml += '<div class="kv"><div class="k">Note</div><div class="v" style="font-style:italic">Add the second rate to compute the full leads-needed figure.</div></div>';
     }
     if (ccRate > 0 && lcRate === 0) {
-      kpiHtml += '<div class="kv"><div class="k">Note</div><div class="v" style="font-style:italic">Add your lead → consult rate to compute the full leads-needed figure.</div></div>';
+      kpiHtml += '<div class="kv"><div class="k">Note</div><div class="v" style="font-style:italic">Add the first rate to compute the full leads-needed figure.</div></div>';
     }
     kpiHtml += '</div>';
   }
 
   if (d.kpis?.length) {
-    kpiHtml += '<div class="section-label" style="margin-top:20px">Campaign KPIs</div>';
-    kpiHtml += '<ul style="margin:0;padding-left:22px;font-size:13px;color:var(--textMid);line-height:1.8">' +
-      d.kpis.map(k => '<li>' + (typeof k === 'string' ? k : Object.values(k || {}).join(' — ')) + '</li>').join('') +
-      '</ul>';
+    // Tier 1: replace plain bullets with proper kpi cards in a grid.
+    kpiHtml += '<div class="section-label" style="margin-top:22px">Campaign KPIs</div>';
+    kpiHtml += '<div class="kpi-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:6px">';
+    d.kpis.forEach(k => {
+      const label = (typeof k === 'string' ? k : Object.values(k || {}).join(' — '));
+      kpiHtml += '<div class="kpi-card" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--textMid);line-height:1.55"><div style="width:8px;height:8px;background:var(--cyan);border-radius:50%;margin-bottom:8px"></div>' + label + '</div>';
+    });
+    kpiHtml += '</div>';
   }
   kpiHtml += '</div>';
   if (goal > 0 || price > 0 || d.kpis?.length) h += kpiHtml;
@@ -1323,11 +1539,13 @@ function rLead(d){
   if(d.leadMagnet){
     const lm=d.leadMagnet;
     const isPass=(lm.valueCheck||'').toLowerCase().startsWith('yes');
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — Lead Magnet</span>${cp('lm1',Object.values(lm).join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:12px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div></div>`;
+    const whyBlock = lm.whyThisFormat ? `<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--teal)"><strong>Why this format:</strong> ${lm.whyThisFormat}</div>` : '';
+    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — Lead Magnet</span>${cp('lm1',Object.values(lm).join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div></div>`;
   }
   if(d.feo){
     const feo=d.feo;
-    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — FEO</span>${cp('feo1',Object.values(feo).join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}</div>`;
+    const whyBlock = feo.whyThisFormat ? `<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--gold)"><strong>Why this format:</strong> ${feo.whyThisFormat}</div>` : '';
+    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — FEO</span>${cp('feo1',Object.values(feo).join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}</div>`;
   }
   if(d.reactivationOption){
     const r=d.reactivationOption;
@@ -1370,29 +1588,69 @@ function rEmail(d){
 }
 
 // ── RENDER DM ──────────────────────────────────────────────────────────────
+// TIER 1: rewritten to match the new scenario-driven schema.
+// Each script renders with: trigger (when to use it) → script body.
+// Supports BOTH the new schema (welcomeDM, storyReplyScript, etc.) AND the
+// old schema (coldOutreach, warmLeadScript) so cached campaigns still render.
 function rDM(d){
   if(!d) return;
   let h=stdBanner();
-  if(d.coldOutreach){
-    const co=d.coldOutreach;
-    h+=`<div class="card"><div class="output-row"><span class="badge badge-cyan">Cold Outreach</span>${cp('dm_c',`${co.opener}\n\n${co.followUp}`)}</div><div class="section-label">Opener</div><div class="dm-bubble">${co.opener}</div><div class="section-label" style="margin-top:14px">Follow-up — no reply after 48 hours</div><div class="dm-bubble">${co.followUp}</div></div>`;
+  const renderScript = (badge, badgeClass, cardClass, trigger, fields, copyId) => {
+    const copyText = fields.map(([_, v]) => v || '').filter(Boolean).join('\n\n');
+    let inner = '<div class="card ' + cardClass + '"><div class="output-row"><span class="badge ' + badgeClass + '">' + badge + '</span>' + cp(copyId, copyText) + '</div>';
+    if (trigger) inner += '<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--teal)"><strong>When to use:</strong> ' + trigger + '</div>';
+    fields.forEach(([k,v]) => { if (v) inner += '<div class="section-label" style="margin-top:10px">' + k + '</div><div class="dm-bubble">' + v + '</div>'; });
+    inner += '</div>';
+    return inner;
+  };
+
+  // NEW SCHEMA (round 5)
+  if (d.welcomeDM) {
+    const w = d.welcomeDM;
+    h += renderScript('Welcome DM · new social follower', 'badge-green', 'card-green', w.trigger, [['Opener', w.opener], ['Follow-up (no reply after 48h)', w.followUp]], 'dm_welcome');
   }
-  if(d.warmLeadScript){
-    const wl=d.warmLeadScript;
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Warm Lead Script</span>${cp('dm_w',`${wl.opener}\n\n${wl.valueAdd}\n\n${wl.bridge}\n\n${wl.closingScript}`)}</div>${[['Opener',wl.opener],['Value add first',wl.valueAdd],['Bridge to FEO',wl.bridge],['Close',wl.closingScript]].map(([k,v])=>`<div class="section-label" style="margin-top:12px">${k}</div><div class="dm-bubble">${v||''}</div>`).join('')}</div>`;
+  if (d.storyReplyScript) {
+    const s = d.storyReplyScript;
+    h += renderScript('Story Reply / Reaction', 'badge-cyan', '', s.trigger, [['Opener', s.opener], ['Bridge to conversation', s.bridgeToConversation]], 'dm_story');
   }
-  if(d.objectionHandles?.length){
-    h+=`<div class="card"><div class="section-label">Objection Handles</div>${d.objectionHandles.map(o=>`<div style="margin-bottom:18px"><p style="font-size:13px;color:var(--amber);font-weight:600;margin-bottom:8px">"${o.objection}"</p><div class="dm-bubble">${o.response}</div></div>`).join('')}</div>`;
+  if (d.postEngagementScript) {
+    const p = d.postEngagementScript;
+    h += renderScript('Post Engagement (like / comment)', 'badge-cyan', '', p.trigger, [['Opener', p.opener], ['Value add first', p.valueAdd], ['Bridge to conversation', p.bridgeToConversation]], 'dm_post');
   }
-  if(d.gymFloorConversation){
-    const gf=d.gymFloorConversation;
-    h+=`<div class="card card-purple"><div class="section-label">Gym Floor Conversation</div>${[['How to start',gf.opener],['Bridge to contact',gf.bridge],['Follow-up DM after',gf.followUp]].map(([k,v])=>`<div class="section-label" style="margin-top:12px">${k}</div><div class="dm-bubble">${v||''}</div>`).join('')}</div>`;
+  if (d.inboundInquiryScript) {
+    const i = d.inboundInquiryScript;
+    h += renderScript('Inbound Inquiry · they DM\'d you', 'badge-gold', 'card-gold', i.trigger, [['Opener', i.opener], ['Qualifying question', i.qualifyingQuestion], ['Next step', i.nextStep]], 'dm_inbound');
   }
-  if(d.reactivationDM){
-    const rd=d.reactivationDM;
-    h+=`<div class="card"><div class="section-label">Reactivation DM — ${rd.target||''}</div><div class="dm-bubble">${rd.opener}</div><p style="font-size:12px;color:var(--textSub);margin-top:8px">Reactivation offer: ${rd.offer}</p></div>`;
+  if (d.leadAdReplyScript) {
+    const l = d.leadAdReplyScript;
+    h += renderScript('Lead Ad Reply · immediate', 'badge-amber', '', l.trigger, [['Opener', l.opener], ['Value add', l.valueAdd], ['Next step', l.nextStep]], 'dm_leadad');
   }
-  document.getElementById('dmOut').innerHTML=h;
+
+  // OLD SCHEMA fallback — render only if the new ones aren't present
+  if (!d.welcomeDM && d.coldOutreach) {
+    const co = d.coldOutreach;
+    h += renderScript('Cold Outreach (legacy)', 'badge-cyan', '', 'Legacy script — re-generate for the new scenario-driven format.', [['Opener', co.opener], ['Follow-up', co.followUp]], 'dm_c');
+  }
+  if (!d.storyReplyScript && d.warmLeadScript) {
+    const wl = d.warmLeadScript;
+    h += renderScript('Warm Lead (legacy)', 'badge-green', 'card-green', 'Legacy script — re-generate for the new scenario-driven format.', [['Opener', wl.opener], ['Value add', wl.valueAdd], ['Bridge to FEO', wl.bridge], ['Close', wl.closingScript]], 'dm_w');
+  }
+
+  if (d.objectionHandles?.length) {
+    h += '<div class="card"><div class="section-label">Objection Handles</div>' +
+      d.objectionHandles.map(o => '<div style="margin-bottom:18px"><p style="font-size:13px;color:var(--amber);font-weight:600;margin-bottom:8px">"' + (o.objection||'') + '"</p><div class="dm-bubble">' + (o.response||'') + '</div></div>').join('') + '</div>';
+  }
+  if (d.reactivationDM) {
+    const rd = d.reactivationDM;
+    h += renderScript('Reactivation DM', 'badge-amber', '', rd.trigger, [['Target', rd.target], ['Opener', rd.opener], ['Reactivation offer', rd.offer]], 'dm_react');
+  }
+  // Old gymFloorConversation still renders if present (moves to its own tab in Tier 2)
+  if (d.gymFloorConversation && !d.welcomeDM) {
+    const gf = d.gymFloorConversation;
+    h += renderScript('Gym Floor Conversation (will move to its own tab)', 'badge-cyan', 'card-purple', null, [['How to start', gf.opener], ['Bridge to contact', gf.bridge], ['Follow-up DM after', gf.followUp]], 'dm_gym');
+  }
+
+  document.getElementById('dmOut').innerHTML = h;
 }
 
 // ── RENDER META ────────────────────────────────────────────────────────────
@@ -1540,30 +1798,39 @@ function mdStrat(d) {
       m += '\n';
     });
   }
-  // Computed KPI math (with optional funnel back-calculation)
+  // Computed KPI math (with real-week duration + sales-path-aware funnel)
   const b = S.brief || {};
   const price = parseFloat(b.price) || 0;
   const goal  = parseFloat(b.goal)  || 0;
   const ltv   = parseFloat(b.ltv)   || 0;
   const lcRate = parseFloat(b.convLeadConsult)  || 0;
   const ccRate = parseFloat(b.convConsultClose) || 0;
+  const path   = b.salesPath || 'calls';
+  const fc     = (typeof FUNNEL_LABELS !== 'undefined') ? (FUNNEL_LABELS[path] || FUNNEL_LABELS.calls) : { mid: 'consults' };
+  const midLabel = fc.mid;
+  let weeks = 4;
+  if (b.start && b.launch) {
+    const ms = new Date(b.launch).getTime() - new Date(b.start).getTime();
+    if (ms > 0) weeks = Math.max(1, Math.round(ms / (7 * 24 * 60 * 60 * 1000)));
+  }
   if (price > 0 && goal > 0) {
     const clients = Math.ceil(goal / price);
     m += '## Breakdown of Goals and Targets\n\n';
+    m += '_Based on a ' + weeks + '-week campaign window (' + (b.start || '?') + ' → ' + (b.launch || '?') + ')_\n\n';
     m += '- **Monthly revenue goal:** £' + Math.round(goal).toLocaleString() + '\n';
     m += '- **Offer price:** £' + Math.round(price).toLocaleString() + '\n';
     m += '- **New clients needed:** ' + clients + ' × £' + Math.round(price).toLocaleString() + ' = £' + (clients * price).toLocaleString() + '\n';
-    m += '- **Weekly target:** ≈ ' + Math.ceil(clients / 4) + ' new clients per week\n';
+    m += '- **Weekly target:** ≈ ' + Math.ceil(clients / weeks) + ' new clients per week (over ' + weeks + ' weeks)\n';
     if (ltv > 0) m += '- **If clients stay for the LTV (£' + Math.round(ltv).toLocaleString() + '):** just ' + Math.ceil(goal/ltv) + ' new clients covers the goal\n';
     m += '\n';
 
-    // Funnel back-calculation
     if (lcRate > 0 || ccRate > 0) {
       m += '### Working backwards through your funnel\n\n';
-      const consults = (ccRate > 0) ? Math.ceil(clients / (ccRate/100)) : null;
-      const leads    = (consults && lcRate > 0) ? Math.ceil(consults / (lcRate/100)) : null;
-      if (consults) m += '- **Consults needed (at ' + ccRate + '% close rate):** ' + consults + ' total · ≈ ' + Math.ceil(consults/4) + ' per week\n';
-      if (leads)    m += '- **Leads needed (at ' + lcRate + '% consult rate):** ' + leads + ' total · ≈ ' + Math.ceil(leads/4) + ' per week\n';
+      m += '_Sales path: ' + ({calls:'Sales calls / consults', direct:'Direct purchase from landing page', application:'Application form', gymfloor:'Gym floor only', email:'Email or DM sequence', mixed:'Mixed / other'}[path] || path) + '_\n\n';
+      const mid   = (ccRate > 0) ? Math.ceil(clients / (ccRate/100)) : null;
+      const leads = (mid && lcRate > 0) ? Math.ceil(mid / (lcRate/100)) : null;
+      if (mid)   m += '- **' + (midLabel[0].toUpperCase()+midLabel.slice(1)) + ' needed (at ' + ccRate + '% close rate):** ' + mid + ' total · ≈ ' + Math.ceil(mid/weeks) + ' per week\n';
+      if (leads) m += '- **Leads needed (at ' + lcRate + '% upstream rate):** ' + leads + ' total · ≈ ' + Math.ceil(leads/weeks) + ' per week\n';
       if (lcRate > 0 && ccRate > 0) {
         const overall = +((lcRate * ccRate) / 100).toFixed(1);
         m += '- **Overall lead → client conversion:** ' + overall + '% (≈ 1 in ' + Math.round(100/overall) + ' leads becomes a client)\n';
@@ -1667,37 +1934,38 @@ function mdEmail(d) {
 function mdDM(d) {
   if (!d) return '';
   let m = '# DM Scripts Suite\n\n';
-  if (d.coldOutreach) {
-    m += '## Cold Outreach\n\n';
-    if (d.coldOutreach.opener) m += '**Opener:**\n> ' + ss(d.coldOutreach.opener).replace(/\n/g,'\n> ') + '\n\n';
-    if (d.coldOutreach.followUp) m += '**Follow-up (no reply after 48h):**\n> ' + ss(d.coldOutreach.followUp).replace(/\n/g,'\n> ') + '\n\n';
-  }
-  if (d.warmLeadScript) {
+  m += '_Every script is scenario-driven. Use only the ones that match how you actually meet people._\n\n';
+
+  // TIER 1: scenario-driven schema
+  const section = (title, trigger, fields) => {
+    let s = '## ' + title + '\n\n';
+    if (trigger) s += '> **When to use:** ' + ss(trigger) + '\n\n';
+    fields.forEach(([k, v]) => { if (v) s += '**' + k + ':**\n> ' + ss(v).replace(/\n/g, '\n> ') + '\n\n'; });
+    return s;
+  };
+
+  if (d.welcomeDM) m += section('Welcome DM — new social follower', d.welcomeDM.trigger, [['Opener', d.welcomeDM.opener], ['Follow-up (no reply after 48h)', d.welcomeDM.followUp]]);
+  if (d.storyReplyScript) m += section('Story Reply / Reaction', d.storyReplyScript.trigger, [['Opener', d.storyReplyScript.opener], ['Bridge to conversation', d.storyReplyScript.bridgeToConversation]]);
+  if (d.postEngagementScript) m += section('Post Engagement (like or comment)', d.postEngagementScript.trigger, [['Opener', d.postEngagementScript.opener], ['Value add first', d.postEngagementScript.valueAdd], ['Bridge to conversation', d.postEngagementScript.bridgeToConversation]]);
+  if (d.inboundInquiryScript) m += section('Inbound Inquiry — they DM\'d you', d.inboundInquiryScript.trigger, [['Opener', d.inboundInquiryScript.opener], ['Qualifying question', d.inboundInquiryScript.qualifyingQuestion], ['Next step', d.inboundInquiryScript.nextStep]]);
+  if (d.leadAdReplyScript) m += section('Lead Ad Reply — immediate', d.leadAdReplyScript.trigger, [['Opener', d.leadAdReplyScript.opener], ['Value add', d.leadAdReplyScript.valueAdd], ['Next step', d.leadAdReplyScript.nextStep]]);
+
+  // Old schema fallback
+  if (!d.welcomeDM && d.coldOutreach) m += section('Cold Outreach (legacy — regenerate for scenario-driven format)', null, [['Opener', d.coldOutreach.opener], ['Follow-up', d.coldOutreach.followUp]]);
+  if (!d.storyReplyScript && d.warmLeadScript) {
     const w = d.warmLeadScript;
-    m += '## Warm Lead Script\n\n';
-    if (w.opener) m += '**Opener:**\n> ' + ss(w.opener) + '\n\n';
-    if (w.valueAdd) m += '**Value add first:**\n> ' + ss(w.valueAdd) + '\n\n';
-    if (w.bridge) m += '**Bridge to FEO:**\n> ' + ss(w.bridge) + '\n\n';
-    if (w.closingScript) m += '**Close:**\n> ' + ss(w.closingScript) + '\n\n';
+    m += section('Warm Lead (legacy — regenerate for scenario-driven format)', null, [['Opener', w.opener], ['Value add', w.valueAdd], ['Bridge to FEO', w.bridge], ['Close', w.closingScript]]);
   }
+
   if (d.objectionHandles?.length) {
     m += '## Objection Handles\n\n';
     d.objectionHandles.forEach(o => {
       m += '**"' + ss(o.objection) + '"**\n> ' + ss(o.response) + '\n\n';
     });
   }
-  if (d.gymFloorConversation) {
-    const g = d.gymFloorConversation;
-    m += '## Gym Floor Conversation\n\n';
-    if (g.opener) m += '**How to start:**\n> ' + ss(g.opener) + '\n\n';
-    if (g.bridge) m += '**Bridge to contact:**\n> ' + ss(g.bridge) + '\n\n';
-    if (g.followUp) m += '**Follow-up DM after:**\n> ' + ss(g.followUp) + '\n\n';
-  }
-  if (d.reactivationDM) {
-    m += '## Reactivation DM\n\n';
-    if (d.reactivationDM.target) m += '_Target:_ ' + ss(d.reactivationDM.target) + '\n\n';
-    if (d.reactivationDM.opener) m += '> ' + ss(d.reactivationDM.opener) + '\n\n';
-    if (d.reactivationDM.offer) m += '**Offer:** ' + ss(d.reactivationDM.offer) + '\n\n';
+  if (d.reactivationDM) m += section('Reactivation DM', d.reactivationDM.trigger, [['Target', d.reactivationDM.target], ['Opener', d.reactivationDM.opener], ['Reactivation offer', d.reactivationDM.offer]]);
+  if (d.gymFloorConversation && !d.welcomeDM) {
+    m += section('Gym Floor Conversation (will move to its own tab next round)', null, [['How to start', d.gymFloorConversation.opener], ['Bridge to contact', d.gymFloorConversation.bridge], ['Follow-up DM after', d.gymFloorConversation.followUp]]);
   }
   return m;
 }
@@ -1815,6 +2083,18 @@ function tryRestoreBanner() {
       setVal('f_goal', b.goal); setVal('f_ltv', b.ltv); setVal('f_obj', b.obj);
       setVal('f_month', b.month); setVal('f_start', b.start); setVal('f_launch', b.launch);
       setVal('f_convLeadConsult', b.convLeadConsult); setVal('f_convConsultClose', b.convConsultClose);
+      // Tier 1 — sales path + channel ticks
+      setVal('f_salesPath', b.salesPath);
+      const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+      if (b.channels) {
+        setChk('f_chan_landing',  b.channels.landing);
+        setChk('f_chan_gymfloor', b.channels.gymfloor);
+        setChk('f_chan_social',   b.channels.social);
+        setChk('f_chan_email',    b.channels.email);
+        setChk('f_chan_dm',       b.channels.dm);
+        setChk('f_chan_paid',     b.channels.paid);
+      }
+      if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
       // Restore state
       S.lang = saved.lang || null;
       S.voice = saved.voice || null;
