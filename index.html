@@ -691,6 +691,16 @@ select option { background: #fff; }
         <option value="custom">Custom flow</option>
       </select>
     </div>
+    <!-- TIER 2.5b: Meta Ads campaigns — funnel-stage tick boxes. Coach picks which they're actually running. -->
+    <div class="field" style="margin-top:18px">
+      <label>If using Meta Ads — which campaigns are you running?</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <label class="toggle" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="f_meta_lm" checked> Lead Magnet Ad <span style="font-size:10px;color:var(--textSub);font-weight:500">(cold · top)</span></label>
+        <label class="toggle" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="f_meta_feo" checked> FEO Retarget Ad <span style="font-size:10px;color:var(--textSub);font-weight:500">(warm · mid)</span></label>
+        <label class="toggle" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="f_meta_core"> Core Offer Retarget Ad <span style="font-size:10px;color:var(--textSub);font-weight:500">(hot · bottom)</span></label>
+        <label class="toggle" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="f_meta_engagement"> Engagement / Brand Ad <span style="font-size:10px;color:var(--textSub);font-weight:500">(parallel)</span></label>
+      </div>
+    </div>
   </div>
 
   <div class="generate-wrap">
@@ -930,6 +940,13 @@ function bf() {
     emailSamples: document.getElementById('f_emailSamples')?.value || '',
     // TIER 2.3: ManyChat purpose (only used if opts.manychat ticked)
     manychatPurpose: document.getElementById('f_manychatPurpose')?.value || 'both',
+    // TIER 2.5b: Meta Ads campaigns — funnel-stage tick boxes
+    metaCampaigns: {
+      leadMagnet: !!document.getElementById('f_meta_lm')?.checked,
+      feo:        !!document.getElementById('f_meta_feo')?.checked,
+      coreOffer:  !!document.getElementById('f_meta_core')?.checked,
+      engagement: !!document.getElementById('f_meta_engagement')?.checked
+    },
     f2f:   S.f2f, opts: S.opts
   };
 }
@@ -1240,6 +1257,14 @@ function restoreFormDraft() {
   if (b.emailDayZero != null) setVal('f_emailDayZero', b.emailDayZero ? '1' : '0');
   if (b.emailSamples) setVal('f_emailSamples', b.emailSamples);
   if (b.manychatPurpose) setVal('f_manychatPurpose', b.manychatPurpose);
+  // TIER 2.5b: meta campaign tick boxes
+  if (b.metaCampaigns) {
+    const setChk2 = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+    setChk2('f_meta_lm',         b.metaCampaigns.leadMagnet);
+    setChk2('f_meta_feo',        b.metaCampaigns.feo);
+    setChk2('f_meta_core',       b.metaCampaigns.coreOffer);
+    setChk2('f_meta_engagement', b.metaCampaigns.engagement);
+  }
   if (b.channels) {
     const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
     setChk('f_chan_landing',  b.channels.landing);
@@ -1252,7 +1277,7 @@ function restoreFormDraft() {
   if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
 }
 function wireFormAutoSave() {
-  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose'];
+  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose','f_meta_lm','f_meta_feo','f_meta_core','f_meta_engagement'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1779,95 +1804,133 @@ function pManyChat(b){
     '}';
 }
 
-// TIER 2.5: Meta Ads overhauled \u2014 three per-objective variants (Awareness, Leads,
-// Engagement), Campaign/AdSet/Creatives structure for direct Meta Ads Manager use,
-// flight dates auto-populated from the brief's Start \u2192 Launch.
+// TIER 2.5b: Meta Ads rebuilt around FUNNEL STAGES (how coaches actually buy ads):
+// Lead Magnet Ad (cold/top) \u2192 FEO Retarget Ad (warm/mid) \u2192 Core Offer Retarget Ad
+// (hot/bottom) \u2192 optional Engagement Ad (parallel). Coach picks which to run via
+// tick boxes on the Brief. Only ticked campaigns are generated.
 function pMeta(b){
   const ltv = b.ltv ? parseInt(b.ltv) : null;
   const price = b.price ? parseInt(b.price) : null;
   const ltvNote = ltv && price
     ? 'Client LTV: \u00a3' + b.ltv + '. Max CPL based on LTV: \u00a3' + (ltv * 0.2).toFixed(0) + ' (20% CAC). Max CPL based on front end: \u00a3' + (price * 0.3).toFixed(0) + ' (30% CAC). Show CPL ranges using BOTH.'
     : '';
-  // Compute flight from Brief dates
   const flightLine = (b.start && b.launch)
-    ? 'Flight: ' + b.start + ' to ' + b.launch + ' (use these exact dates in budgetFramework.flightDates).'
-    : 'Flight dates: tied to Campaign Start \u2192 Launch dates the coach picks in the Brief.';
-  // Reference the actual lead magnet / FEO so creatives are specific
+    ? 'Flight: ' + b.start + ' to ' + b.launch + ' (use these EXACT dates in budgetFramework.flightDates).'
+    : 'Flight dates: TBD (coach hasn\'t picked yet).';
   const lm  = S.res && S.res.lead && S.res.lead.leadMagnet;
   const feo = S.res && S.res.lead && S.res.lead.feo;
-  const lmRef  = lm  ? '"' + (lm.name || '')  + '" (' + (lm.format || '')  + ')' : 'the lead magnet';
-  const feoRef = feo ? '"' + (feo.name || '') + '" (' + (feo.format || '') + ')' : 'the FEO';
+  const lmName    = lm  ? (lm.name   || 'the lead magnet')  : 'the lead magnet';
+  const lmFormat  = lm  ? (lm.format || '')                  : '';
+  const feoName   = feo ? (feo.name  || 'the FEO')          : 'the FEO';
+  const feoFormat = feo ? (feo.format || '')                 : '';
+  const coreOfferName = b.offer || 'the core offer';
 
-  return 'Meta Ads campaign \u2014 generate THREE separate cold-traffic ad variants (one per objective) plus a warm retargeting ad, the Meta Ads Manager structure, and a budget framework with split.\n' +
-    'Niche: ' + b.niche + ' | Core offer: "' + b.offer + '"' + (b.price ? ' at \u00a3' + b.price : '') + ' | Objective: ' + b.obj + ' | Month: ' + b.month + pathChannelsCtx(b) +
-    (ltvNote ? ' | ' + ltvNote : '') + ' | ' + flightLine +
-    '\n\nReference the actual offers in creative concepts:\n   \u2022 Lead magnet: ' + lmRef + '\n   \u2022 FEO: ' + feoRef + '\n' +
-    '\nFOLLOW META\'S REAL HIERARCHY: Campaign \u2192 Ad Set (audience + budget + placements) \u2192 Creative (the actual ad). Each cold ad variant should have a different campaign objective in Meta:\n' +
-    '   \u2022 Awareness \u2014 top of funnel. Optimise for Reach / Video Views. Audience is BROAD lookalike or interest-based. Creative is problem-aware, scroll-stopping, low-friction CTA (no link needed, just brand recall).\n' +
-    '   \u2022 Leads \u2014 mid funnel. Optimise for Leads (instant form or website conversion). Audience is more refined. Creative directly offers the lead magnet with a clear CTA to opt in.\n' +
-    '   \u2022 Engagement \u2014 for content / community. Optimise for Engagement / Messages / Post Engagement. Audience is interest + competitor follow. Creative invites comment, DM or save.\n' +
-    '\nTONE: Hormozi-direct, specific to the niche\'s pain. No marketing-speak. Each ad must read like the coach personally wrote it, not an agency.\n' +
-    '\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
-    '{\n' +
-    '  "structure": {\n' +
-    '    "campaigns": [\n' +
-    '      {"name":"e.g. \\"Father Figure \u2014 Awareness\\"","objective":"Awareness","budgetSplit":"e.g. 25% of total","purpose":"why this campaign exists in the funnel"},\n' +
-    '      {"name":"","objective":"Leads","budgetSplit":"","purpose":""},\n' +
-    '      {"name":"","objective":"Engagement","budgetSplit":"","purpose":""},\n' +
-    '      {"name":"e.g. \\"Father Figure \u2014 Warm Retarget\\"","objective":"Conversions","budgetSplit":"","purpose":""}\n' +
-    '    ]\n' +
-    '  },\n' +
-    '  "awarenessAd": {\n' +
-    '    "campaignObjective": "Awareness / Reach / Video Views",\n' +
-    '    "audienceTargeting": "specific audience description for Meta Ads Manager",\n' +
+  // Which campaigns has the coach ticked?
+  const camps = b.metaCampaigns || { leadMagnet: true, feo: true, coreOffer: false, engagement: false };
+  const want = (k) => !!camps[k];
+
+  // Build the "which ads to generate" instruction list dynamically
+  const adList = [
+    want('leadMagnet')  && '   \u2022 leadMagnetAd \u2014 COLD audience, top of funnel. Promotes the lead magnet "' + lmName + '"' + (lmFormat ? ' (' + lmFormat + ')' : '') + '. Target broad cold interests / lookalikes. Direct opt-in or video view \u2192 lead form.',
+    want('feo')         && '   \u2022 feoAd \u2014 WARM audience, mid funnel. RETARGETS people who consumed the lead magnet (opt-ins, video viewers >50%, page engagers from the LM campaign). Promotes the FEO "' + feoName + '"' + (feoFormat ? ' (' + feoFormat + ')' : '') + '. Strong CTA to buy / book.',
+    want('coreOffer')   && '   \u2022 coreOfferAd \u2014 HOT audience, bottom funnel. RETARGETS people who bought the FEO OR who clicked through on the FEO ad but didn\'t buy. Promotes the core offer "' + coreOfferName + '". Strong scarcity / urgency angle.',
+    want('engagement')  && '   \u2022 engagementAd \u2014 PARALLEL brand-building. Audience is broad interest / competitor followers. Optimises for engagement / messages. No direct sell \u2014 just builds brand awareness alongside the funnel ads.'
+  ].filter(Boolean).join('\n');
+
+  // Which JSON fields to include in the return shape
+  const fields = [];
+  if (want('leadMagnet')) fields.push(
+    '  "leadMagnetAd": {\n' +
+    '    "funnelStage": "Top of funnel \u2014 cold",\n' +
+    '    "promotes": "' + (lmName || '') + '",\n' +
+    '    "audiencePlainEnglish": "who Meta should show this ad to, in plain English",\n' +
+    '    "audienceTargeting": "Meta Ads Manager targeting spec \u2014 interests, lookalikes, demographics",\n' +
+    '    "metaObjective": "Conversions / Leads / Traffic \u2014 recommended Meta campaign objective",\n' +
     '    "placements": "e.g. Reels, Stories, Feed",\n' +
-    '    "primaryText": "the actual ad copy \u2014 first 125 chars hook the most",\n' +
+    '    "primaryText": "the actual ad copy \u2014 first 125 chars hook hardest",\n' +
     '    "headline": "max 27 chars ideal",\n' +
     '    "description": "max 27 chars",\n' +
-    '    "ctaButton": "Learn More / Watch More / etc",\n' +
+    '    "ctaButton": "Sign Up / Download / Watch Now / etc",\n' +
     '    "creativeDirection": "specific creative brief \u2014 what to film/design",\n' +
     '    "hookOpenerOptions": ["", "", ""],\n' +
-    '    "kpisToWatch": "what numbers prove it\'s working"\n' +
-    '  },\n' +
-    '  "leadAd": {\n' +
-    '    "campaignObjective": "Leads (Instant Form or Website Conversions)",\n' +
-    '    "audienceTargeting": "",\n' +
-    '    "placements": "",\n' +
-    '    "primaryText": "directly offers the lead magnet by name",\n' +
-    '    "headline": "",\n' +
-    '    "description": "",\n' +
-    '    "ctaButton": "Sign Up / Download / Get Started",\n' +
-    '    "creativeDirection": "",\n' +
     '    "leadFormQuestions": ["", "", ""],\n' +
     '    "thankYouMessage": "what they see after submitting",\n' +
-    '    "kpisToWatch": ""\n' +
-    '  },\n' +
-    '  "engagementAd": {\n' +
-    '    "campaignObjective": "Engagement / Messages / Post Engagement",\n' +
-    '    "audienceTargeting": "",\n' +
+    '    "kpisToWatch": "specific numbers that prove it\'s working"\n' +
+    '  }'
+  );
+  if (want('feo')) fields.push(
+    '  "feoAd": {\n' +
+    '    "funnelStage": "Mid funnel \u2014 warm",\n' +
+    '    "promotes": "' + (feoName || '') + '",\n' +
+    '    "audiencePlainEnglish": "specifically: lead-magnet opt-ins, video viewers >50%, page engagers from the lead-magnet ad",\n' +
+    '    "audienceTargeting": "Meta Ads Manager retargeting spec \u2014 custom audiences from the LM campaign",\n' +
+    '    "metaObjective": "Conversions \u2014 optimise for FEO purchase / booking",\n' +
     '    "placements": "",\n' +
-    '    "primaryText": "designed to spark comments, saves, shares, or DMs",\n' +
+    '    "primaryText": "warmer tone, references they\'ve seen the lead magnet, pitches the FEO directly by name",\n' +
+    '    "headline": "",\n' +
+    '    "description": "",\n' +
+    '    "ctaButton": "Book Now / Get Started / Buy Now",\n' +
+    '    "creativeDirection": "",\n' +
+    '    "kpisToWatch": ""\n' +
+    '  }'
+  );
+  if (want('coreOffer')) fields.push(
+    '  "coreOfferAd": {\n' +
+    '    "funnelStage": "Bottom of funnel \u2014 hot",\n' +
+    '    "promotes": "' + (coreOfferName || '') + '",\n' +
+    '    "audiencePlainEnglish": "specifically: people who bought the FEO, FEO-ad clickers who didn\'t buy, recent close warm leads",\n' +
+    '    "audienceTargeting": "Meta Ads Manager retargeting \u2014 purchasers list + warm engagement list",\n' +
+    '    "metaObjective": "Conversions / Sales",\n' +
+    '    "placements": "",\n' +
+    '    "primaryText": "directly pitches the core offer with scarcity / urgency",\n' +
+    '    "headline": "",\n' +
+    '    "description": "",\n' +
+    '    "ctaButton": "Apply Now / Book Discovery Call / Join Now",\n' +
+    '    "creativeDirection": "",\n' +
+    '    "kpisToWatch": ""\n' +
+    '  }'
+  );
+  if (want('engagement')) fields.push(
+    '  "engagementAd": {\n' +
+    '    "funnelStage": "Parallel \u2014 brand building / community",\n' +
+    '    "promotes": "the coach\'s brand and content",\n' +
+    '    "audiencePlainEnglish": "broad cold interests / competitor followers \u2014 runs alongside funnel ads to build brand awareness",\n' +
+    '    "audienceTargeting": "",\n' +
+    '    "metaObjective": "Engagement / Messages / Post Engagement / Video Views",\n' +
+    '    "placements": "",\n' +
+    '    "primaryText": "designed to spark comments, saves, shares, or DMs \u2014 no direct sell",\n' +
     '    "headline": "",\n' +
     '    "description": "",\n' +
     '    "ctaButton": "Send Message / Like Page / Save",\n' +
     '    "creativeDirection": "",\n' +
     '    "engagementHook": "what specifically prompts the engagement action",\n' +
     '    "kpisToWatch": ""\n' +
+    '  }'
+  );
+
+  return 'Meta Ads campaign \u2014 generate ONLY the campaigns the coach has ticked. Build the campaigns around FUNNEL STAGES (how coaches actually buy ads), not Meta\'s technical objectives.\n' +
+    'Niche: ' + b.niche + ' | Core offer: "' + b.offer + '"' + (b.price ? ' at \u00a3' + b.price : '') + ' | Objective: ' + b.obj + ' | Month: ' + b.month + pathChannelsCtx(b) +
+    (ltvNote ? ' | ' + ltvNote : '') + ' | ' + flightLine +
+    '\n\nGENERATE THESE AND ONLY THESE CAMPAIGNS (coach has ticked them):\n' + adList +
+    '\n\nFUNNEL FLOW: cold audience sees the Lead Magnet Ad \u2192 consumes the lead magnet \u2192 becomes a warm audience for the FEO Retarget Ad \u2192 buys the FEO \u2192 becomes a hot audience for the Core Offer Retarget Ad. Each ad explicitly references the offer it promotes BY NAME.\n' +
+    '\nTONE: Hormozi-direct, specific to the niche\'s pain. No marketing-speak. Each ad reads like the coach personally wrote it, not an agency.\n' +
+    '\nReturn this EXACT JSON shape (no extra fields, no markdown fences). Include the structure + budgetFramework + only the ticked campaign objects:\n' +
+    '{\n' +
+    '  "structure": {\n' +
+    '    "funnelFlow": [\n' +
+    (want('leadMagnet')  ? '      {"stage":"Top \u2014 Cold","label":"Lead Magnet Ad","promotes":"' + lmName + '","budgetSplit":"e.g. 50% of total"},\n' : '') +
+    (want('feo')         ? '      {"stage":"Mid \u2014 Warm Retarget","label":"FEO Retarget Ad","promotes":"' + feoName + '","budgetSplit":""},\n' : '') +
+    (want('coreOffer')   ? '      {"stage":"Bottom \u2014 Hot Retarget","label":"Core Offer Retarget Ad","promotes":"' + coreOfferName + '","budgetSplit":""},\n' : '') +
+    (want('engagement')  ? '      {"stage":"Parallel \u2014 Brand","label":"Engagement Ad","promotes":"the coach\'s content","budgetSplit":""},\n' : '') +
+    '      {"stage":"end","label":"","promotes":"","budgetSplit":""}\n' +
+    '    ]\n' +
     '  },\n' +
-    '  "warmRetarget": {\n' +
-    '    "audience": "specific retargeting audience (e.g. site visitors last 30d, lead-magnet downloaders, video viewers > 50%)",\n' +
-    '    "primaryText": "warmer tone \u2014 references they\'ve seen the coach before",\n' +
-    '    "headline": "",\n' +
-    '    "description": "",\n' +
-    '    "ctaButton": "Book Now / Sign Up / Apply Now",\n' +
-    '    "creativeDirection": "",\n' +
-    '    "budgetNote": ""\n' +
-    '  },\n' +
+    fields.join(',\n') + ',\n' +
     '  "budgetFramework": {\n' +
     '    "dailyBudget": "e.g. \u00a330/day total",\n' +
     '    "totalBudget": "compute from daily \u00d7 number of days in flight",\n' +
     '    "flightDates": "' + (b.start && b.launch ? b.start + ' to ' + b.launch : 'TBD') + '",\n' +
-    '    "splitAcrossCampaigns": "e.g. Awareness 25% \u00b7 Leads 50% \u00b7 Engagement 10% \u00b7 Warm Retarget 15%",\n' +
+    '    "splitAcrossCampaigns": "split across the ticked campaigns ONLY, percentages must total 100",\n' +
     '    "expectedCPL": "front-end CPL target",\n' +
     '    "expectedCPLBasedOnLTV": "LTV-based CPL ceiling",\n' +
     '    "expectedConversionRate": "lead \u2192 client %",\n' +
@@ -2316,28 +2379,53 @@ function rManyChat(d,b){
   document.getElementById('manychatOut').innerHTML=h;
 }
 
-// TIER 2.5: Meta Ads renderer rebuilt — Campaign/Ad Set/Creatives structure
-// diagram at the top, then 3 per-objective cold ad variants + warm retarget +
-// budget framework. Backwards-compatible: renders OLD shape too if present.
+// TIER 2.5b: Meta Ads renderer — funnel-stage based.
+// Renders a top-down funnel flow diagram + per-stage ads in funnel order.
+// Backwards-compatible: handles Tier 2.5 (objective-based) AND original shape.
 function rMeta(d, b) {
   if (!d) return;
   let h = stdBanner();
   const init = (b && b.niche ? b.niche : 'PT').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
 
-  // 1. Campaign structure diagram (new) — shows the Meta Ads Manager hierarchy
-  if (d.structure && d.structure.campaigns && d.structure.campaigns.length) {
+  // Stage → colour mapping
+  const stageColor = (stage) => {
+    const s = (stage || '').toLowerCase();
+    if (s.includes('top') || s.includes('cold')) return 'var(--cyan)';
+    if (s.includes('mid') || s.includes('warm')) return 'var(--gold)';
+    if (s.includes('bottom') || s.includes('hot')) return 'var(--amber)';
+    if (s.includes('parallel') || s.includes('brand')) return 'var(--teal)';
+    return 'var(--navy)';
+  };
+
+  // 1. Funnel flow diagram (new — top-down, like the ManyChat flow map)
+  if (d.structure && d.structure.funnelFlow && d.structure.funnelFlow.length) {
+    const flow = d.structure.funnelFlow.filter(s => s && s.stage !== 'end' && s.label);
+    h += '<div class="card card-cyan"><div class="section-label">Funnel Flow — top to bottom</div>' +
+      '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">How traffic moves through your campaign. Cold audience at the top, retargeting all the way down.</div>' +
+      '<div style="display:flex;flex-direction:column;gap:0;align-items:center">';
+    flow.forEach((s, i) => {
+      const color = stageColor(s.stage);
+      h += '<div style="background:#fff;border:2px solid ' + color + ';border-radius:10px;padding:14px 20px;min-width:320px;max-width:520px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.04)">' +
+        '<div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:' + color + ';font-weight:700;margin-bottom:4px">' + (s.stage || '') + '</div>' +
+        '<div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:4px">' + (s.label || '') + '</div>' +
+        (s.promotes ? '<div style="font-size:12px;color:var(--textMid)">Promotes: <strong>' + s.promotes + '</strong></div>' : '') +
+        (s.budgetSplit ? '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-top:6px">' + s.budgetSplit + '</div>' : '') +
+      '</div>';
+      if (i < flow.length - 1) {
+        h += '<div style="font-size:22px;color:var(--borderMid);line-height:1;padding:6px 0">↓</div>';
+      }
+    });
+    h += '</div></div>';
+  }
+  // Backwards compat — old "campaigns" structure (Tier 2.5)
+  else if (d.structure && d.structure.campaigns && d.structure.campaigns.length) {
     const objColor = { Awareness:'var(--cyan)', Reach:'var(--cyan)', Leads:'var(--green)', Engagement:'var(--gold)', Conversions:'var(--amber)', Sales:'var(--amber)', Traffic:'var(--teal)' };
-    h += '<div class="card card-cyan"><div class="section-label">Meta Ads Manager — Campaign Structure</div>' +
-      '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">Set these up in Meta Ads Manager as separate campaigns. Each one has its own objective, audience, and budget split.</div>' +
+    h += '<div class="card card-cyan"><div class="section-label">Meta Ads Manager — Campaign Structure (legacy)</div>' +
+      '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">Regenerate this tab for the new funnel-stage layout.</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">';
     d.structure.campaigns.forEach(c => {
       const color = objColor[c.objective] || 'var(--navy)';
-      h += '<div style="flex:1;min-width:200px;background:#fff;border:2px solid ' + color + ';border-radius:10px;padding:14px;box-shadow:0 2px 6px rgba(0,0,0,0.04)">' +
-        '<div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:' + color + ';font-weight:700;margin-bottom:6px">' + (c.objective || '') + '</div>' +
-        '<div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:6px">' + (c.name || '') + '</div>' +
-        (c.budgetSplit ? '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">' + c.budgetSplit + '</div>' : '') +
-        (c.purpose ? '<div style="font-size:11px;color:var(--textSub);line-height:1.45">' + c.purpose + '</div>' : '') +
-      '</div>';
+      h += '<div style="flex:1;min-width:200px;background:#fff;border:2px solid ' + color + ';border-radius:10px;padding:14px;box-shadow:0 2px 6px rgba(0,0,0,0.04)"><div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:' + color + ';font-weight:700;margin-bottom:6px">' + (c.objective || '') + '</div><div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:6px">' + (c.name || '') + '</div>' + (c.budgetSplit ? '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">' + c.budgetSplit + '</div>' : '') + (c.purpose ? '<div style="font-size:11px;color:var(--textSub);line-height:1.45">' + c.purpose + '</div>' : '') + '</div>';
     });
     h += '</div></div>';
   }
@@ -2361,26 +2449,37 @@ function rMeta(d, b) {
     h += budgetHtml;
   }
 
-  // 3. Per-objective ad variant renderer (reusable)
-  const renderAd = (ad, label, accent, cardClass, badgeClass, copyId) => {
+  // 3. Per-ad renderer (reusable). TIER 2.5b: shows funnel stage + what it promotes + audience plain English.
+  const renderAd = (ad, label, cardClass, badgeClass, copyId) => {
     if (!ad) return '';
-    const copyText = 'CAMPAIGN OBJECTIVE: ' + (ad.campaignObjective || '') +
-      '\nAUDIENCE: ' + (ad.audienceTargeting || '') +
-      '\nPLACEMENTS: ' + (ad.placements || '') +
+    const stage = ad.funnelStage || '';
+    const cardColor = stageColor(stage);
+    const copyText = 'CAMPAIGN: ' + label + (ad.funnelStage ? ' — ' + ad.funnelStage : '') +
+      (ad.promotes ? '\nPROMOTES: ' + ad.promotes : '') +
+      (ad.metaObjective ? '\nMETA OBJECTIVE: ' + ad.metaObjective : '') +
+      (ad.audiencePlainEnglish ? '\nAUDIENCE: ' + ad.audiencePlainEnglish : '') +
+      (ad.audienceTargeting ? '\nTARGETING SPEC: ' + ad.audienceTargeting : '') +
+      (ad.placements ? '\nPLACEMENTS: ' + ad.placements : '') +
       '\n\nPRIMARY TEXT:\n' + (ad.primaryText || '') +
       '\n\nHEADLINE: ' + (ad.headline || '') +
       '\nDESCRIPTION: ' + (ad.description || '') +
       '\nCTA: ' + (ad.ctaButton || '') +
       '\n\nCREATIVE: ' + (ad.creativeDirection || '');
-    let inner = '<div class="card ' + cardClass + '"><div class="output-row">' +
+    let inner = '<div class="card ' + cardClass + '" style="border-left:4px solid ' + cardColor + '"><div class="output-row">' +
       '<span class="badge ' + badgeClass + '">' + label + '</span>' +
-      (ad.campaignObjective ? '<span style="font-size:11px;color:var(--textSub);margin-left:8px">Objective: ' + ad.campaignObjective + '</span>' : '') +
+      (ad.funnelStage ? '<span style="font-size:11px;color:' + cardColor + ';margin-left:8px;font-weight:600">' + ad.funnelStage + '</span>' : '') +
       cp(copyId, copyText) + '</div>';
-    // Ad Set details
-    if (ad.audienceTargeting || ad.placements) {
-      inner += '<div style="padding:10px 14px;background:var(--card2);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--textMid)">' +
+    // What this ad PROMOTES (the named offer)
+    if (ad.promotes) {
+      inner += '<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-bottom:12px;font-size:13px;color:var(--gold)"><strong>Promotes:</strong> ' + ad.promotes + '</div>';
+    }
+    // Audience block — plain English first, then Meta targeting spec
+    if (ad.audiencePlainEnglish || ad.audienceTargeting || ad.placements || ad.metaObjective) {
+      inner += '<div style="padding:12px 14px;background:var(--card2);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--textMid)">' +
         '<div style="font-weight:700;color:var(--navy);margin-bottom:6px;font-size:10px;letter-spacing:0.05em;text-transform:uppercase">Ad Set</div>' +
-        (ad.audienceTargeting ? '<div style="margin-bottom:4px"><strong>Audience:</strong> ' + ad.audienceTargeting + '</div>' : '') +
+        (ad.audiencePlainEnglish ? '<div style="margin-bottom:6px"><strong>Show this ad to:</strong> ' + ad.audiencePlainEnglish + '</div>' : '') +
+        (ad.audienceTargeting ? '<div style="margin-bottom:4px"><strong>Meta targeting:</strong> ' + ad.audienceTargeting + '</div>' : '') +
+        (ad.metaObjective ? '<div style="margin-bottom:4px"><strong>Meta objective:</strong> ' + ad.metaObjective + '</div>' : '') +
         (ad.placements ? '<div><strong>Placements:</strong> ' + ad.placements + '</div>' : '') +
         '</div>';
     }
@@ -2391,12 +2490,12 @@ function rMeta(d, b) {
         '<div class="ad-image-area"><p style="font-size:12px;color:var(--textSub)">📹 Creative direction:<br>' + (ad.creativeDirection || '') + '</p></div>' +
         '<div class="ad-footer"><div><div class="ad-headline">' + (ad.headline || '') + '</div><div class="ad-description">' + (ad.description || '') + '</div></div><button class="ad-cta">' + (ad.ctaButton || '') + '</button></div>' +
       '</div></div>';
-    // Hook options
+    // Hook openers (lead magnet ad)
     if (ad.hookOpenerOptions && ad.hookOpenerOptions.length) {
       inner += '<div class="section-label" style="margin-top:14px">Hook opener variations to A/B test</div>';
       ad.hookOpenerOptions.filter(Boolean).forEach(opt => inner += '<div class="dm-bubble" style="margin-bottom:6px">' + opt + '</div>');
     }
-    // Lead form
+    // Lead form questions (lead magnet ad)
     if (ad.leadFormQuestions && ad.leadFormQuestions.length) {
       inner += '<div class="section-label" style="margin-top:14px">Lead form questions</div>' +
         '<ol style="margin:0;padding-left:22px;font-size:13px;color:var(--text);line-height:1.8">' +
@@ -2409,17 +2508,24 @@ function rMeta(d, b) {
     return inner;
   };
 
-  // 4. The three cold ad variants
-  if (d.awarenessAd)  h += renderAd(d.awarenessAd,  'Awareness Ad — top of funnel', 'var(--cyan)',  'card-cyan',  'badge-cyan',  'meta_aw');
-  if (d.leadAd)       h += renderAd(d.leadAd,       'Lead Ad — direct opt-in',       'var(--green)', 'card-green', 'badge-green', 'meta_ld');
-  if (d.engagementAd) h += renderAd(d.engagementAd, 'Engagement Ad — comments / DMs', 'var(--gold)',  'card-gold',  'badge-gold',  'meta_en');
+  // 4. Funnel-stage cards in order
+  if (d.leadMagnetAd) h += renderAd(d.leadMagnetAd, 'Lead Magnet Ad', 'card-cyan',  'badge-cyan',  'meta_lm');
+  if (d.feoAd)        h += renderAd(d.feoAd,        'FEO Retarget Ad', 'card-gold',  'badge-gold',  'meta_feo');
+  if (d.coreOfferAd)  h += renderAd(d.coreOfferAd,  'Core Offer Retarget Ad', 'card-amber', 'badge-amber', 'meta_core');
+  if (d.engagementAd && (d.leadMagnetAd || d.feoAd || d.coreOfferAd))
+                       h += renderAd(d.engagementAd, 'Engagement / Brand Ad', '', 'badge-cyan', 'meta_en');
 
-  // 5. Warm retargeting ad (existing — render same way)
-  if (d.warmRetarget) h += renderAd(d.warmRetarget, 'Warm Retargeting — seen you before', 'var(--amber)', 'card-amber', 'badge-amber', 'meta_wr');
+  // Backwards compat — Tier 2.5 shape (awarenessAd / leadAd / engagementAd as primary)
+  if (!d.leadMagnetAd && !d.feoAd && !d.coreOfferAd) {
+    if (d.awarenessAd) h += renderAd(d.awarenessAd, 'Awareness Ad (legacy)', 'card-cyan', 'badge-cyan', 'meta_aw');
+    if (d.leadAd) h += renderAd(d.leadAd, 'Lead Ad (legacy)', 'card-green', 'badge-green', 'meta_ld');
+    if (d.engagementAd) h += renderAd(d.engagementAd, 'Engagement Ad (legacy)', 'card-gold', 'badge-gold', 'meta_en');
+    if (d.warmRetarget) h += renderAd(d.warmRetarget, 'Warm Retargeting (legacy)', 'card-amber', 'badge-amber', 'meta_wr');
+  }
 
-  // OLD SCHEMA FALLBACK — if only the legacy coldAd shape is present, render that
-  if (!d.awarenessAd && !d.leadAd && !d.engagementAd && d.coldAd) {
-    h += renderAd(d.coldAd, 'Cold Audience Ad (legacy — regenerate for 3-variant format)', 'var(--cyan)', 'card-cyan', 'badge-cyan', 'meta_c');
+  // OLD SCHEMA FALLBACK — original coldAd shape (pre Tier 2.5)
+  if (!d.leadMagnetAd && !d.feoAd && !d.coreOfferAd && !d.awarenessAd && !d.leadAd && d.coldAd) {
+    h += renderAd(d.coldAd, 'Cold Audience Ad (legacy — regenerate)', 'card-cyan', 'badge-cyan', 'meta_c');
   }
   // Old leadForm — only render if not absorbed into leadAd
   if (!d.leadAd && d.leadForm) {
@@ -2860,14 +2966,27 @@ const TAB_TO_MD = {
   10: () => mdGymFloor(S.res.gymfloor)
 };
 
-// TIER 2.5: Markdown export for Meta Ads — proper structure, per-objective sections.
+// TIER 2.5b: Markdown export for Meta Ads — funnel-stage layout.
 function mdMeta(d) {
   if (!d) return '';
   let m = '# Meta Ads\n\n';
 
-  if (d.structure && d.structure.campaigns && d.structure.campaigns.length) {
-    m += '## Campaign Structure (Meta Ads Manager)\n\n';
-    m += 'Set these up as separate campaigns in Meta Ads Manager. Each has its own objective, audience, and budget split.\n\n';
+  // New funnel flow
+  if (d.structure && d.structure.funnelFlow && d.structure.funnelFlow.length) {
+    m += '## Funnel Flow — top to bottom\n\n';
+    m += 'How traffic moves through your campaign. Cold audience at the top, retargeting all the way down.\n\n';
+    const flow = d.structure.funnelFlow.filter(s => s && s.stage !== 'end' && s.label);
+    flow.forEach((s, i) => {
+      m += '### ' + ss(s.stage || '') + (s.label ? ' — ' + ss(s.label) : '') + '\n';
+      if (s.promotes) m += '- **Promotes:** ' + ss(s.promotes) + '\n';
+      if (s.budgetSplit) m += '- **Budget split:** ' + ss(s.budgetSplit) + '\n';
+      m += '\n';
+      if (i < flow.length - 1) m += '↓\n\n';
+    });
+  }
+  // Backwards compat: old campaigns structure
+  else if (d.structure && d.structure.campaigns && d.structure.campaigns.length) {
+    m += '## Campaign Structure (legacy)\n\n';
     d.structure.campaigns.forEach(c => {
       m += '### ' + ss(c.name || '') + (c.objective ? ' (' + ss(c.objective) + ')' : '') + '\n';
       if (c.budgetSplit) m += '- **Budget split:** ' + ss(c.budgetSplit) + '\n';
@@ -2894,14 +3013,18 @@ function mdMeta(d) {
   const mdAd = (ad, title) => {
     if (!ad) return '';
     let s = '## ' + title + '\n\n';
-    if (ad.campaignObjective)  s += '_Objective: ' + ss(ad.campaignObjective) + '_\n\n';
-    if (ad.audienceTargeting)  s += '**Audience:** ' + ss(ad.audienceTargeting) + '\n';
-    if (ad.placements)         s += '**Placements:** ' + ss(ad.placements) + '\n\n';
-    if (ad.primaryText)        s += '### Primary text\n> ' + ss(ad.primaryText).replace(/\n/g, '\n> ') + '\n\n';
-    if (ad.headline)           s += '**Headline:** ' + ss(ad.headline) + '\n';
-    if (ad.description)        s += '**Description:** ' + ss(ad.description) + '\n';
-    if (ad.ctaButton)          s += '**CTA button:** ' + ss(ad.ctaButton) + '\n';
-    if (ad.creativeDirection)  s += '\n**Creative direction:** ' + ss(ad.creativeDirection) + '\n';
+    if (ad.funnelStage)            s += '**Funnel stage:** ' + ss(ad.funnelStage) + '\n';
+    if (ad.promotes)               s += '**Promotes:** ' + ss(ad.promotes) + '\n';
+    if (ad.metaObjective)          s += '**Meta objective:** ' + ss(ad.metaObjective) + '\n';
+    if (ad.campaignObjective)      s += '**Campaign objective:** ' + ss(ad.campaignObjective) + '\n';
+    if (ad.audiencePlainEnglish)   s += '**Show this ad to:** ' + ss(ad.audiencePlainEnglish) + '\n';
+    if (ad.audienceTargeting)      s += '**Meta targeting spec:** ' + ss(ad.audienceTargeting) + '\n';
+    if (ad.placements)             s += '**Placements:** ' + ss(ad.placements) + '\n';
+    if (ad.primaryText)            s += '\n### Primary text\n> ' + ss(ad.primaryText).replace(/\n/g, '\n> ') + '\n\n';
+    if (ad.headline)               s += '**Headline:** ' + ss(ad.headline) + '\n';
+    if (ad.description)            s += '**Description:** ' + ss(ad.description) + '\n';
+    if (ad.ctaButton)              s += '**CTA button:** ' + ss(ad.ctaButton) + '\n';
+    if (ad.creativeDirection)      s += '\n**Creative direction:** ' + ss(ad.creativeDirection) + '\n';
     if (ad.hookOpenerOptions?.length) {
       s += '\n**Hook opener variations (A/B test):**\n';
       ad.hookOpenerOptions.filter(Boolean).forEach(o => s += '- ' + ss(o) + '\n');
@@ -2918,13 +3041,23 @@ function mdMeta(d) {
     return s;
   };
 
-  if (d.awarenessAd)  m += mdAd(d.awarenessAd,  'Awareness Ad — top of funnel');
-  if (d.leadAd)       m += mdAd(d.leadAd,       'Lead Ad — direct opt-in');
-  if (d.engagementAd) m += mdAd(d.engagementAd, 'Engagement Ad — comments / DMs');
-  if (d.warmRetarget) m += mdAd(d.warmRetarget, 'Warm Retargeting Ad');
+  // New funnel-stage ads in order
+  if (d.leadMagnetAd) m += mdAd(d.leadMagnetAd, 'Lead Magnet Ad — top of funnel (cold)');
+  if (d.feoAd)        m += mdAd(d.feoAd,        'FEO Retarget Ad — mid funnel (warm)');
+  if (d.coreOfferAd)  m += mdAd(d.coreOfferAd,  'Core Offer Retarget Ad — bottom funnel (hot)');
+  if (d.engagementAd && (d.leadMagnetAd || d.feoAd || d.coreOfferAd))
+                      m += mdAd(d.engagementAd, 'Engagement / Brand Ad — parallel');
 
-  // Legacy fallback
-  if (!d.awarenessAd && !d.leadAd && !d.engagementAd && d.coldAd) {
+  // Backwards compat — Tier 2.5
+  if (!d.leadMagnetAd && !d.feoAd && !d.coreOfferAd) {
+    if (d.awarenessAd) m += mdAd(d.awarenessAd, 'Awareness Ad (legacy)');
+    if (d.leadAd)      m += mdAd(d.leadAd,      'Lead Ad (legacy)');
+    if (d.engagementAd) m += mdAd(d.engagementAd, 'Engagement Ad (legacy)');
+    if (d.warmRetarget) m += mdAd(d.warmRetarget, 'Warm Retargeting Ad (legacy)');
+  }
+
+  // Original old shape
+  if (!d.leadMagnetAd && !d.feoAd && !d.coreOfferAd && !d.awarenessAd && !d.leadAd && d.coldAd) {
     m += mdAd(d.coldAd, 'Cold Audience Ad (legacy — regenerate for new format)');
   }
   if (!d.leadAd && d.leadForm) {
@@ -3216,6 +3349,13 @@ function tryRestoreBanner() {
         setChk('f_chan_email',    b.channels.email);
         setChk('f_chan_dm',       b.channels.dm);
         setChk('f_chan_paid',     b.channels.paid);
+      }
+      // Tier 2.5b — meta campaign tick boxes
+      if (b.metaCampaigns) {
+        setChk('f_meta_lm',         b.metaCampaigns.leadMagnet);
+        setChk('f_meta_feo',        b.metaCampaigns.feo);
+        setChk('f_meta_core',       b.metaCampaigns.coreOffer);
+        setChk('f_meta_engagement', b.metaCampaigns.engagement);
       }
       if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
       // Restore state
