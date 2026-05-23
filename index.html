@@ -1303,7 +1303,7 @@ async function generate() {
 
     // ── Step 1: Lead Gen + FEO ──
     markStep(1, 'active'); setLoadingSub('Designing your lead magnet and front-end offer…');
-    const lg = await api(sys,pLead(b),3500);
+    const lg = await api(sys,pLead(b),5500);
     rLead(lg); S.res.lead=lg; saveCampaign(b);
     markStep(1, 'done');
 
@@ -1443,8 +1443,18 @@ function pLead(b){
 '   • Scorecard + 30-min review (only if the scorecard is the lead magnet)\n' +
 'Price the FEO based on the core offer price — typically 5-15% of the core offer price, NOT a fixed £27.' +
 (price ? '\nFor THIS coach with a core offer at £' + price + ', sensible FEO price band: £' + Math.max(15, Math.round(price * 0.05)) + ' to £' + Math.round(price * 0.15) + '.\n' : '\n') +
+'\n3) LANDING PAGE COPY for BOTH the lead magnet AND the FEO. The coach should be able to copy this straight into Carrd, Webflow, Wix, or a Google Doc and have a working page. Write in the coach\'s voice — direct, specific, no fluff. Each landing page block should be paste-ready, not a description of what the copy should say.\n' +
+'Required landing page fields per offer:\n' +
+'   • headline: 6-10 words, hook-driven, names the specific outcome and person\n' +
+'   • subhead: 1 sentence that names the pain + the bridge to the outcome\n' +
+'   • introParagraph: 2-3 sentences that build the case — pain → empathy → "what if"\n' +
+'   • bullets: 4-6 specific outcome bullets (each starts with a verb, ends with a concrete win)\n' +
+'   • ctaButtonText: 3-5 words, action-driven (e.g. "Send me the plan", "Book my scorecard")\n' +
+'   • ctaSubtext: ~1 line below the button reducing risk (e.g. "Free · No spam · Unsubscribe anytime")\n' +
+'   • socialProofLine: 1-2 sentences pointing to results or numbers (real-sounding even if it has to be generic, e.g. "Over 200 dads in this same situation have already used this")\n' +
+'   • objectionHandle: 1 sentence answering the biggest objection upfront (e.g. "Already tried diets? This one\'s different because…")\n' +
 '\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
-'{"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":"","whyThisFormat":""},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":"","whyThisFormat":""},"reactivationOption":{"trigger":"","offer":"","message":""}}';
+'{"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"reactivationOption":{"trigger":"","offer":"","message":""}}';
 }
 
 function pContent(b,weeks){
@@ -1641,16 +1651,58 @@ function rStrat(d){
 function rLead(d){
   if(!d) return;
   let h=stdBanner();
+
+  // TIER 2.2: landing page block renderer — paste-ready copy for Carrd / Webflow / Wix / Google Doc.
+  // Shows a visual mock-up of the page so coaches can SEE what they'll build.
+  const renderLandingPage = (lp, accentColor, copyId, ctaBg) => {
+    if (!lp) return '';
+    const lpFullText = [
+      'HEADLINE: ' + (lp.headline||''),
+      'SUBHEAD: ' + (lp.subhead||''),
+      '',
+      lp.introParagraph || '',
+      '',
+      'KEY POINTS:',
+      ...(lp.bullets || []).map(b => '• ' + b),
+      '',
+      'CTA BUTTON: ' + (lp.ctaButtonText || ''),
+      'CTA SUBTEXT: ' + (lp.ctaSubtext || ''),
+      '',
+      'SOCIAL PROOF: ' + (lp.socialProofLine || ''),
+      'OBJECTION HANDLE: ' + (lp.objectionHandle || '')
+    ].join('\n');
+    return `<details style="margin-top:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <summary style="cursor:pointer;padding:12px 16px;background:var(--card2);font-size:13px;font-weight:600;color:var(--navy);user-select:none;display:flex;align-items:center;gap:10px">
+        <span style="font-size:16px">📄</span>
+        <span>Landing page copy — paste-ready for Carrd / Webflow / Google Doc</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--textSub);font-weight:500">click to expand</span>
+      </summary>
+      <div style="padding:18px 20px;background:#fff">
+        <div style="text-align:right;margin-bottom:14px">${cp(copyId, lpFullText)}</div>
+        <div style="border:1px dashed var(--borderMid);border-radius:10px;padding:24px;background:var(--surface)">
+          ${lp.headline ? `<h2 style="margin:0 0 12px;font-family:var(--display);font-size:24px;font-weight:700;color:var(--navy);line-height:1.2">${lp.headline}</h2>` : ''}
+          ${lp.subhead ? `<p style="margin:0 0 18px;font-size:15px;color:var(--textMid);line-height:1.5">${lp.subhead}</p>` : ''}
+          ${lp.introParagraph ? `<p style="margin:0 0 14px;font-size:14px;color:var(--text);line-height:1.65">${lp.introParagraph}</p>` : ''}
+          ${(lp.bullets && lp.bullets.length) ? `<ul style="margin:0 0 18px;padding-left:0;list-style:none">${lp.bullets.filter(Boolean).map(b => `<li style="padding:6px 0 6px 26px;position:relative;font-size:14px;color:var(--text);line-height:1.55"><span style="position:absolute;left:0;top:8px;color:${accentColor};font-weight:700">✓</span>${b}</li>`).join('')}</ul>` : ''}
+          ${lp.ctaButtonText ? `<div style="text-align:center;margin:20px 0 6px"><button style="background:${ctaBg};color:#fff;border:none;padding:14px 28px;border-radius:8px;font-family:inherit;font-size:15px;font-weight:700;cursor:default">${lp.ctaButtonText}</button></div>` : ''}
+          ${lp.ctaSubtext ? `<div style="text-align:center;font-size:11px;color:var(--textSub);margin-bottom:14px">${lp.ctaSubtext}</div>` : ''}
+          ${lp.objectionHandle ? `<div style="padding:10px 14px;background:var(--card2);border-left:3px solid ${accentColor};border-radius:4px;margin-bottom:10px;font-size:13px;color:var(--textMid);font-style:italic">${lp.objectionHandle}</div>` : ''}
+          ${lp.socialProofLine ? `<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:6px;font-size:12px;color:var(--gold);text-align:center"><strong>Social proof:</strong> ${lp.socialProofLine}</div>` : ''}
+        </div>
+      </div>
+    </details>`;
+  };
+
   if(d.leadMagnet){
     const lm=d.leadMagnet;
     const isPass=(lm.valueCheck||'').toLowerCase().startsWith('yes');
     const whyBlock = lm.whyThisFormat ? `<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--teal)"><strong>Why this format:</strong> ${lm.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — Lead Magnet</span>${cp('lm1',Object.values(lm).join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div></div>`;
+    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — Lead Magnet</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)')}</div>`;
   }
   if(d.feo){
     const feo=d.feo;
     const whyBlock = feo.whyThisFormat ? `<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--gold)"><strong>Why this format:</strong> ${feo.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — FEO</span>${cp('feo1',Object.values(feo).join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}</div>`;
+    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — FEO</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)')}</div>`;
   }
   if(d.reactivationOption){
     const r=d.reactivationOption;
@@ -1955,6 +2007,25 @@ function mdStrat(d) {
 function mdLead(d) {
   if (!d) return '';
   let m = '# Lead Generation + Front-End Offer\n\n';
+
+  // TIER 2.2: landing page copy block in markdown form
+  const mdLandingPage = (lp) => {
+    if (!lp) return '';
+    let s = '\n### Landing page copy — paste-ready\n\n';
+    if (lp.headline)          s += '**HEADLINE:** ' + ss(lp.headline) + '\n\n';
+    if (lp.subhead)           s += '**SUBHEAD:** ' + ss(lp.subhead) + '\n\n';
+    if (lp.introParagraph)    s += ss(lp.introParagraph) + '\n\n';
+    if (lp.bullets && lp.bullets.length) {
+      s += '**Key points:**\n';
+      lp.bullets.filter(Boolean).forEach(b => { s += '- ' + ss(b) + '\n'; });
+      s += '\n';
+    }
+    if (lp.ctaButtonText)     s += '**[' + ss(lp.ctaButtonText) + ']**' + (lp.ctaSubtext ? ' — _' + ss(lp.ctaSubtext) + '_' : '') + '\n\n';
+    if (lp.objectionHandle)   s += '> _' + ss(lp.objectionHandle) + '_\n\n';
+    if (lp.socialProofLine)   s += '**Social proof:** ' + ss(lp.socialProofLine) + '\n\n';
+    return s;
+  };
+
   if (d.leadMagnet) {
     const l = d.leadMagnet;
     m += '## Attention Offer — Lead Magnet\n\n';
@@ -1965,7 +2036,9 @@ function mdLead(d) {
     if (l.outcome) m += '- **Quick win:** ' + ss(l.outcome) + '\n';
     if (l.bridge) m += '- **Bridge to FEO:** ' + ss(l.bridge) + '\n';
     if (l.valueCheck) m += '- **Value check:** ' + ss(l.valueCheck) + '\n';
+    if (l.whyThisFormat) m += '- **Why this format:** ' + ss(l.whyThisFormat) + '\n';
     m += '\n';
+    m += mdLandingPage(l.landingPage);
   }
   if (d.feo) {
     const f = d.feo;
@@ -1978,7 +2051,9 @@ function mdLead(d) {
     if (f.outcome) m += '- **Outcome:** ' + ss(f.outcome) + '\n';
     if (f.decisionMoment) m += '- **Decision moment:** ' + ss(f.decisionMoment) + '\n';
     if (f.valueEquation) m += '- **Value equation:** ' + ss(f.valueEquation) + '\n';
+    if (f.whyThisFormat) m += '- **Why this format:** ' + ss(f.whyThisFormat) + '\n';
     m += '\n';
+    m += mdLandingPage(f.landingPage);
   }
   if (d.reactivationOption) {
     const r = d.reactivationOption;
@@ -2135,9 +2210,9 @@ function renderCopyButton() {
   if (!btn) {
     btn = document.createElement('button');
     btn.id = 'ptmaCopyAll';
-    btn.textContent = '📋 Copy entire tab';
+    btn.textContent = '📋 Copy tab';
     btn.onclick = copyCurrentTab;
-    btn.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;border:none;padding:12px 18px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:9000;transition:transform 0.15s';
+    btn.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;border:none;padding:12px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:9000;transition:transform 0.15s';
     btn.onmouseover = () => btn.style.transform = 'translateY(-2px)';
     btn.onmouseout = () => btn.style.transform = '';
     document.body.appendChild(btn);
@@ -2146,11 +2221,95 @@ function renderCopyButton() {
   btn.style.display = (S.tab >= 3 && S.tab <= 9) ? 'block' : 'none';
 }
 
-// Re-render the copy button whenever showTab is called.
+// TIER 2.2: Per-section "Regenerate this tab" button. Floating, sits left of
+// the Copy button. Re-runs just one tab's api() calls without redoing the
+// whole campaign (saves 4+ minutes and 6+ API calls when a coach just wants
+// to swap out one section).
+async function regenerateCurrentTab() {
+  const b = bf();
+  if (!b.niche || !b.offer) { showError('Fill in your niche and offer name on the Campaign Brief before regenerating.'); return; }
+  S.brief = b;
+  const ctx = lCtx() + vCtx();
+  const sys = `${PTMA_STANDARD}${ctx}\n\nYou are an expert fitness business campaign strategist. Return ONLY compact JSON. No preamble. No markdown fences. Apply every PTMA rule to every output.`;
+  const tab = S.tab;
+  const labels = { 3: 'Strategy', 4: 'Lead Gen + FEO', 5: 'Content Plan', 6: 'Email Sequence', 7: 'DM Scripts', 8: 'ManyChat', 9: 'Meta Ads' };
+  const tabName = labels[tab] || 'this section';
+  showGenPill('Regenerating ' + tabName + '…', Date.now());
+  try {
+    if (tab === 3) {
+      const r = await api(sys, pStrat(b), 4000);
+      if (!r) throw new Error('Strategy regenerate failed — try again.');
+      rStrat(r); S.res.strat = r;
+    } else if (tab === 4) {
+      const r = await api(sys, pLead(b), 3500);
+      if (!r) throw new Error('Lead Gen regenerate failed — try again.');
+      rLead(r); S.res.lead = r;
+    } else if (tab === 5) {
+      const r1 = await api(sys, pContent(b, '1-2'), 5000);
+      const r2 = await api(sys, pContent(b, '3-4'), 5000);
+      const r = mergeContent(r1, r2);
+      if (!r) throw new Error('Content Plan regenerate failed — try again.');
+      rContent(r); S.res.content = r;
+    } else if (tab === 6) {
+      const r1 = await api(sys, pEmail(b, '1-3'), 4000);
+      const r2 = await api(sys, pEmail(b, '4-6'), 4000);
+      const r = mergeEmail(r1, r2);
+      if (!r) throw new Error('Email Sequence regenerate failed — try again.');
+      rEmail(r); S.res.email = r;
+    } else if (tab === 7) {
+      const r = await api(sys, pDM(b), 3500);
+      if (!r) throw new Error('DM Scripts regenerate failed — try again.');
+      rDM(r); S.res.dm = r;
+    } else if (tab === 8) {
+      const r = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.', pManyChat(b), 3500);
+      if (!r) throw new Error('ManyChat regenerate failed — try again.');
+      rManyChat(r, b); S.res.manychat = r;
+    } else if (tab === 9) {
+      const r = await api(sys, pMeta(b), 3500);
+      if (!r) throw new Error('Meta Ads regenerate failed — try again.');
+      rMeta(r, b); S.res.meta = r;
+    } else {
+      throw new Error('Nothing to regenerate on this tab.');
+    }
+    saveCampaign(b);
+    showToast(tabName + ' regenerated ✓');
+  } catch (e) {
+    showError(e.message || String(e));
+  } finally {
+    hideGenPill();
+  }
+}
+function renderRegenButton() {
+  let btn = document.getElementById('ptmaRegen');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'ptmaRegen';
+    btn.textContent = '↻ Regenerate tab';
+    btn.title = 'Re-run just this section. Takes 30s–2 min depending on the tab. Will overwrite the current content.';
+    btn.onclick = async () => {
+      if (!confirm('Regenerate this tab? The current content will be overwritten and a fresh version generated. This will take 30 seconds to 2 minutes.')) return;
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      await regenerateCurrentTab();
+      btn.disabled = false;
+      btn.style.opacity = '';
+    };
+    btn.style.cssText = 'position:fixed;bottom:24px;right:140px;background:#fff;color:var(--navy);border:1px solid var(--border);padding:12px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.12);z-index:9000;transition:transform 0.15s';
+    btn.onmouseover = () => btn.style.transform = 'translateY(-2px)';
+    btn.onmouseout = () => btn.style.transform = '';
+    document.body.appendChild(btn);
+  }
+  // Show on results tabs only, AND only when that tab has content (S.res.xxx exists)
+  const hasContent = ({3:S.res.strat, 4:S.res.lead, 5:S.res.content, 6:S.res.email, 7:S.res.dm, 8:S.res.manychat, 9:S.res.meta})[S.tab];
+  btn.style.display = (S.tab >= 3 && S.tab <= 9 && hasContent) ? 'block' : 'none';
+}
+
+// Re-render the floating buttons whenever showTab is called.
 const _origShowTab = window.showTab;
 window.showTab = function(n) {
   _origShowTab(n);
   renderCopyButton();
+  renderRegenButton();
 };
 
 // ── RESTORE PREVIOUS CAMPAIGN ON PAGE LOAD ─────────────────────────────────
