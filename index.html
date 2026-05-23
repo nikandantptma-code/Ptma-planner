@@ -96,6 +96,50 @@ body {
 .badge-purple { background: var(--purpleLight); color: var(--purple);    border-color: #C4B3E8; }
 .badge-red    { background: var(--redLight);    color: var(--red);       border-color: #F0C0BC; }
 
+/* ── JARGON TOOLTIPS (TIER 2.3) ── */
+.term {
+  border-bottom: 1px dashed var(--textSub);
+  cursor: help;
+  position: relative;
+  font-weight: 600;
+  color: inherit;
+}
+.term::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--navy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: 6px;
+  white-space: normal;
+  width: 280px;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 9500;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+.term::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--navy);
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9500;
+}
+.term:hover::after, .term:hover::before { opacity: 1; }
+
 /* ── TABS ── */
 /* TIER 2.1: sticky so they stay visible during long Content Plan / Email scrolls. */
 .tabs {
@@ -548,6 +592,39 @@ select option { background: #fff; }
   </div>
 
   <!-- PATCHED 2026-05-22 (Tier 1): Distribution channel ticks. -->
+  <!-- TIER 2.3: Email Sequence options — count, day-zero, optional tone samples. -->
+  <div class="card">
+    <div class="card-eyebrow">Email Sequence Options · OPTIONAL</div>
+    <div class="card-title">How should the nurture sequence work?</div>
+    <div class="card-sub" style="margin-bottom:14px">Defaults are fine. Tweak if you want a longer or shorter sequence, or to feed the tool a sample of your own email tone.</div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Number of emails</label>
+        <select id="f_emailCount">
+          <option value="3">3 — short and punchy</option>
+          <option value="4">4 emails</option>
+          <option value="5">5 emails</option>
+          <option value="6" selected>6 emails (default)</option>
+          <option value="7">7 emails</option>
+          <option value="8">8 emails</option>
+          <option value="9">9 emails</option>
+          <option value="10">10 — long nurture</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Email 1 timing</label>
+        <select id="f_emailDayZero">
+          <option value="1" selected>Send immediately on opt-in (day 0)</option>
+          <option value="0">Send 24 hours after opt-in (day 1)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-top:8px">
+      <label>Optional — paste 1-2 of your own past emails for tone reference</label>
+      <textarea id="f_emailSamples" placeholder="If you've written emails before that hit well, paste them here (subject + body). The tool will mirror your tone in the new sequence. Leave blank if you'd rather start fresh." style="min-height:90px;font-family:inherit;font-size:13px"></textarea>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-eyebrow">Distribution Channels</div>
     <div class="card-title">Where will the campaign show up?</div>
@@ -601,6 +678,17 @@ select option { background: #fff; }
       <button class="toggle" id="tog_meta" onclick="toggleOpt('meta')">Meta Ad Copy</button>
       <button class="toggle" id="tog_manychat" onclick="toggleOpt('manychat')">ManyChat Flow</button>
       <button class="toggle" id="tog_retarget" onclick="toggleOpt('retarget')">Retargeting Ads</button>
+    </div>
+    <!-- TIER 2.3: ManyChat purpose selector — only relevant when ManyChat is toggled on. -->
+    <div class="field" style="margin-top:18px">
+      <label>If using ManyChat — what's it for?</label>
+      <select id="f_manychatPurpose">
+        <option value="both" selected>Both — lead magnet delivery AND FEO booking</option>
+        <option value="leadmagnet">Lead magnet delivery only</option>
+        <option value="feo">FEO booking only</option>
+        <option value="gymfloor">Gym floor lead capture only</option>
+        <option value="custom">Custom flow</option>
+      </select>
     </div>
   </div>
 
@@ -670,6 +758,30 @@ select option { background: #fff; }
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 const S = { tab:0, lang:null, voice:null, langFiles:[], voiceFiles:[], f2f:true, opts:{meta:false,manychat:false,retarget:false}, res:{}, brief:null };
+
+// TIER 2.3: Jargon glossary + helper. Use tip('FEO') in any rendered HTML
+// to wrap the term in a hoverable span that shows a plain-English definition.
+const GLOSSARY = {
+  'FEO': 'Front-End Offer — a paid intro offer (usually 5-15% of your core offer price) that delivers real value BEFORE the sales conversation. Not a free consultation.',
+  'Lead Magnet': 'A free, valuable resource (challenge, scorecard, taster, etc.) that captures contact details so you can nurture the lead toward the FEO.',
+  'Epiphany Bridge': 'A storytelling framework by Russell Brunson: Backstory → Desire → Wall → Epiphany → Result. Used to take a reader from where they are to seeing your offer as the answer.',
+  'Value Equation': 'Hormozi: Value = (Dream Outcome × Perceived Likelihood) ÷ (Time Delay × Effort). Higher numerator, lower denominator = stronger offer.',
+  'Jab': 'GaryVee: a value-only post that gives something useful without asking for anything in return. 80% of your content should be jabs.',
+  'Right Hook': 'GaryVee: a post that makes a direct ask (CTA, offer, sell). 20% of your content. Never two right hooks in a row.',
+  'Pillar': 'A topic theme the content plan rotates through (e.g. Mindset, Training, Nutrition, Lifestyle). Stops content feeling random.',
+  'WHY Statement': 'Simon Sinek: the belief or purpose behind WHAT you sell. People buy WHY, not WHAT.',
+  'CPL': 'Cost Per Lead — the average ad spend it takes to generate one lead. Healthy CPL is usually < 20% of your client LTV.',
+  'LTV': 'Lifetime Value — total revenue a client generates over their whole time with you (not just the first sale).',
+  'CAC': 'Customer Acquisition Cost — the total cost to acquire a paying client (ad spend + tools + time). Should be << LTV.',
+  'PTMA Standard': 'The 10-rule operating standard this tool is built on, synthesised from Sinek, StoryBrand, Hormozi, GaryVee, Brunson, Walker, Smith, Booth, FMA, Luke Johnson.',
+  'Three Levels of Pain': 'StoryBrand: every problem has External (the visible thing), Internal (how it makes them feel), and Philosophical (why it\'s wrong they have this problem) layers. Hit all three.',
+  'Hook Story Offer': 'Russell Brunson: every piece of content needs a Hook (stops scroll), Story (Epiphany Bridge), and Offer (clear CTA with reason to act now).'
+};
+function tip(term, label) {
+  const def = GLOSSARY[term];
+  if (!def) return label || term;
+  return '<span class="term" data-tip="' + def.replace(/"/g, '&quot;') + '">' + (label || term) + '</span>';
+}
 
 // ── THE PTMA STANDARD ──────────────────────────────────────────────────────
 const PTMA_STANDARD = `YOU ARE OPERATING TO THE PTMA STANDARD. Every output must meet every rule. No exceptions.
@@ -806,6 +918,12 @@ function bf() {
     month: document.getElementById('f_month').value,
     start: document.getElementById('f_start').value,
     launch:document.getElementById('f_launch').value,
+    // TIER 2.3: email sequence options
+    emailCount:   parseInt(document.getElementById('f_emailCount')?.value || '6'),
+    emailDayZero: (document.getElementById('f_emailDayZero')?.value || '1') === '1',
+    emailSamples: document.getElementById('f_emailSamples')?.value || '',
+    // TIER 2.3: ManyChat purpose (only used if opts.manychat ticked)
+    manychatPurpose: document.getElementById('f_manychatPurpose')?.value || 'both',
     f2f:   S.f2f, opts: S.opts
   };
 }
@@ -1111,6 +1229,11 @@ function restoreFormDraft() {
   setVal('f_salesPath', b.salesPath);
   setVal('f_convLeadConsult', b.convLeadConsult); setVal('f_convConsultClose', b.convConsultClose);
   setVal('f_obj', b.obj); setVal('f_month', b.month); setVal('f_start', b.start); setVal('f_launch', b.launch);
+  // TIER 2.3: email + manychat
+  if (b.emailCount) setVal('f_emailCount', String(b.emailCount));
+  if (b.emailDayZero != null) setVal('f_emailDayZero', b.emailDayZero ? '1' : '0');
+  if (b.emailSamples) setVal('f_emailSamples', b.emailSamples);
+  if (b.manychatPurpose) setVal('f_manychatPurpose', b.manychatPurpose);
   if (b.channels) {
     const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
     setChk('f_chan_landing',  b.channels.landing);
@@ -1123,7 +1246,7 @@ function restoreFormDraft() {
   if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
 }
 function wireFormAutoSave() {
-  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid'];
+  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1262,6 +1385,25 @@ function clearCampaign() {
   try { localStorage.removeItem(SAVE_KEY); } catch {}
 }
 
+// TIER 2.3: Generate email sequence in batches of 3 (or fewer for the last batch).
+// Each batch ~3500 tokens. Handles any count from 3 to 10.
+async function generateEmailBatches(b, sys) {
+  const count = parseInt(b.emailCount) || 6;
+  const batches = [];
+  for (let start = 1; start <= count; start += 3) {
+    const end = Math.min(start + 2, count);
+    batches.push({ start, end });
+  }
+  let merged = null;
+  for (const batch of batches) {
+    const tokensNeeded = Math.max(3000, (batch.end - batch.start + 1) * 1100 + 600);
+    const res = await api(sys, pEmail(b, batch), tokensNeeded);
+    if (!res) continue;
+    merged = mergeEmail(merged, res);
+  }
+  return merged;
+}
+
 async function generate() {
   const b=bf();
   if(!b.niche||!b.offer){showError('Please fill in your niche and offer name before generating.');return;}
@@ -1321,13 +1463,12 @@ async function generate() {
     rContent(ct); S.res.content=ct; saveCampaign(b);
     markStep(2, 'done');
 
-    // ── Step 3: Email Sequence (two calls) ──
-    markStep(3, 'active'); setLoadingSub('Writing the 6-email nurture sequence…');
+    // ── Step 3: Email Sequence (dynamic count, batched in 3s) ──
+    // TIER 2.3: batches of 3 to stay within token budgets and keep latency predictable.
+    markStep(3, 'active'); setLoadingSub('Writing the ' + (b.emailCount || 6) + '-email nurture sequence…');
     showGenPill('Writing the email sequence…', t0);
-    const em1 = await api(sys,pEmail(b,'1-3'),4000);
-    const em2 = await api(sys,pEmail(b,'4-6'),4000);
-    const em = mergeEmail(em1,em2);
-    rEmail(em); S.res.email=em; saveCampaign(b);
+    const em = await generateEmailBatches(b, sys);
+    rEmail(em); S.res.email = em; saveCampaign(b);
     markStep(3, 'done');
 
     // ── Step 4: DM Scripts ──
@@ -1342,7 +1483,7 @@ async function generate() {
       markStep(5, 'active'); setLoadingSub('Generating optional extras…');
       showGenPill('Generating optional extras…', t0);
       if(b.opts.manychat){
-        const mc = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),3500);
+        const mc = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),5500);
         if(mc){rManyChat(mc,b); S.res.manychat=mc; saveCampaign(b);}
       }
       if(b.opts.meta){
@@ -1465,11 +1606,38 @@ function pContent(b,weeks){
     '\nReturn: {"contentRatio":"","weeklyPlan":[{"week":'+startW+',"theme":"","posts":[{"day":"","pillar":"","format":"Reel/Carousel/Story/Talking Head","hook":"","storyArc":"","cta":"","documentPrompt":"","whyItWorks":""}]}],"gymFloorContent":[]}';
 }
 
-function pEmail(b,nums){
-  const which = nums==='1-3' ? 'emails 1, 2 and 3 ONLY. Email 1: deliver+trust. Email 2: teach value. Email 3: Epiphany Bridge story.' : 'emails 4, 5 and 6 ONLY. Email 4: handle objection. Email 5: WHY statement. Email 6: FEO invite with urgency.';
-  const startN = nums==='1-3' ? 1 : 4;
-  return 'Nurture sequence - '+which+' Niche: '+b.niche+' | Offer: "'+b.offer+'"'+(b.price?' at £'+b.price:'')+' | Month: '+b.month+
-    '\nReturn: {"sequence":[{"emailNum":'+startN+',"timing":"","purpose":"","subjectLine":"","hook":"","bodyOutline":[],"cta":"","jab_or_hook":"jab"}]}';
+// TIER 2.3: pEmail rewritten to support 3-10 emails, day-zero choice, and optional tone samples.
+function pEmail(b, batchSpec) {
+  // batchSpec: { start: 1, end: N } — generates emails in that range
+  const count   = b.emailCount || 6;
+  const dayZero = b.emailDayZero !== false;
+  const samples = (b.emailSamples || '').trim();
+  const start = batchSpec.start, end = batchSpec.end;
+
+  // Default sequence template (varies with count). Always finishes with FEO invite.
+  const sequenceArc = (count <= 3) ?
+    'Email 1: deliver+trust+epiphany story. Email 2: handle the biggest objection. Email 3: FEO invite with urgency.' :
+  (count <= 5) ?
+    'Email 1: deliver+trust. Email 2: teach value. Email 3: Epiphany Bridge story. Email 4: handle objection + WHY. Email ' + count + ': FEO invite with urgency.' :
+  (count <= 7) ?
+    'Email 1: deliver+trust. Email 2: teach value. Email 3: Epiphany Bridge story. Email 4: handle objection. Email 5: WHY statement. Emails 6-' + count + ': FEO invite + close with urgency.' :
+    'Email 1: deliver+trust. Email 2: teach value. Email 3: Epiphany Bridge story. Email 4: case study / client win. Email 5: handle main objection. Email 6: WHY statement. Email 7: address fear/risk. Email 8: scarcity setup. Emails 9-' + count + ': FEO invite + final close.';
+
+  const dayZeroNote = dayZero
+    ? 'Email 1 timing: Day 0 — fires IMMEDIATELY on opt-in. Subject line should look like a delivery confirmation, NOT a "welcome to my list" message.'
+    : 'Email 1 timing: Day 1 — fires 24 hours after opt-in. Subject line should reference what they downloaded yesterday.';
+
+  const sampleBlock = samples
+    ? '\n\nTONE SAMPLE — match this voice exactly. Mirror sentence length, vocabulary, openers, line breaks. DO NOT copy the actual content, just the tone:\n"""\n' + samples.slice(0, 1500) + '\n"""\n'
+    : '';
+
+  return 'Email nurture sequence for a fitness coach. ' +
+    'Generate ONLY emails ' + start + ' through ' + end + ' (inclusive) — ' + (end - start + 1) + ' email' + (end - start ? 's' : '') + '. ' +
+    'Total sequence is ' + count + ' emails. Arc: ' + sequenceArc + ' ' + dayZeroNote +
+    '\nNiche: ' + b.niche + ' | Core offer: "' + b.offer + '"' + (b.price ? ' at £' + b.price : '') + ' | Month: ' + b.month +
+    pathChannelsCtx(b) + sampleBlock +
+    '\n\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
+    '{"sequence":[{"emailNum":' + start + ',"timing":"","purpose":"","subjectLine":"","hook":"","bodyOutline":[],"cta":"","jab_or_hook":"jab"}]}';
 }
 
 // TIER 1: DM Scripts rebuilt around real-world scenarios — not cold spray.
@@ -1532,8 +1700,55 @@ Return this EXACT JSON shape (no extra fields, no markdown fences):
   }
 }`;}
 
+// TIER 2.3: ManyChat overhauled — purpose-driven, hyper-specific to the
+// generated lead magnet + FEO, returns a flowMap for visual rendering.
 function pManyChat(b){
-  return 'ManyChat automation flow. Niche: '+b.niche+' | Offer: "'+b.offer+'" | Month: '+b.month+'\nReturn: {"welcomeFlow":{"trigger":"","opener":"","quickReplies":[],"leadCapture":""},"leadMagnetFlow":{"trigger":"","deliveryMessage":"","followUp1":"","followUp2":"","bridgeToFEO":""},"gymFloorFlow":{"trigger":"","opener":"","qualifier":"","bookingCTA":""},"broadcastMessages":[{"timing":"","purpose":"","message":"","quickReplies":[]}],"keywordTriggers":[{"keyword":"","response":"","action":""}]}';
+  const purpose = b.manychatPurpose || 'both';
+  const lm = S.res && S.res.lead && S.res.lead.leadMagnet;
+  const feo = S.res && S.res.lead && S.res.lead.feo;
+  const lmName     = lm ? (lm.name   || 'the lead magnet')   : 'the lead magnet';
+  const lmFormat   = lm ? (lm.format || 'a free resource')   : 'a free resource';
+  const lmHook     = lm ? (lm.hook   || '')                  : '';
+  const feoName    = feo ? (feo.name  || 'the FEO')          : 'the FEO';
+  const feoPrice   = feo ? (feo.price || '')                  : '';
+  const feoFormat  = feo ? (feo.format || '')                 : '';
+  const purposeLine = ({
+    both:       'PURPOSE: deliver the lead magnet AND book the FEO. Two main paths from one welcome flow.',
+    leadmagnet: 'PURPOSE: deliver the lead magnet only. No FEO selling — keep the experience clean.',
+    feo:        'PURPOSE: book the FEO directly. The flow is shorter, more sales-y but still consultative.',
+    gymfloor:   'PURPOSE: capture leads from gym-floor signage / QR codes. Short, mobile-first, low-friction.',
+    custom:     'PURPOSE: custom flow tied to the coach\'s specific situation.'
+  })[purpose];
+
+  return 'ManyChat automation flow for a fitness coach.\n' +
+    'Niche: ' + b.niche + ' | Core offer: "' + b.offer + '" | Month: ' + b.month + pathChannelsCtx(b) +
+    '\n\n' + purposeLine +
+    '\n\nREFERENCE THE ACTUAL LEAD MAGNET AND FEO. Do NOT use generic placeholders like "the lead magnet" or "the offer" in your messages — name them and write the messages as if the coach was sending them right now.\n' +
+    '   • Lead magnet name: "' + lmName + '"\n' +
+    '   • Lead magnet format: ' + lmFormat + '\n' +
+    (lmHook ? '   • Lead magnet hook: "' + lmHook + '"\n' : '') +
+    '   • FEO name: "' + feoName + '"\n' +
+    (feoPrice ? '   • FEO price: £' + feoPrice + '\n' : '') +
+    (feoFormat ? '   • FEO format: ' + feoFormat + '\n' : '') +
+    '\nTONE: warm, human, line-break-heavy (like real DMs), short sentences, emoji used sparingly, no marketing-speak. Each message stands on its own — make it feel like the coach personally typed it.\n' +
+    '\nRETURN this EXACT JSON shape (no extra fields, no markdown fences). The flowMap is a high-level diagram: each step is one row, in order.\n' +
+    '{\n' +
+    '  "flowMap": [\n' +
+    '    {"step":"Trigger","label":"e.g. Keyword \\"PLAN\\" or Story reply","detail":""},\n' +
+    '    {"step":"Welcome","label":"","detail":""},\n' +
+    '    {"step":"Lead magnet delivery","label":"","detail":""},\n' +
+    '    {"step":"Follow-up 1","label":"timing + purpose","detail":""},\n' +
+    '    {"step":"Follow-up 2","label":"timing + purpose","detail":""},\n' +
+    '    {"step":"Bridge to FEO","label":"","detail":""},\n' +
+    '    {"step":"FEO offer / booking","label":"","detail":""}\n' +
+    '  ],\n' +
+    '  "welcomeFlow":     {"trigger":"","opener":"","quickReplies":[],"leadCapture":""},\n' +
+    '  "leadMagnetFlow":  {"trigger":"","deliveryMessage":"","followUp1":"","followUp2":"","bridgeToFEO":""},\n' +
+    '  "feoFlow":         {"trigger":"","openerForFEO":"","valueRecap":"","offerMessage":"","bookingLink":"","fallbackIfNoReply":""},\n' +
+    '  "gymFloorFlow":    {"trigger":"","opener":"","qualifier":"","bookingCTA":""},\n' +
+    '  "broadcastMessages":[{"timing":"","purpose":"","message":"","quickReplies":[]}],\n' +
+    '  "keywordTriggers": [{"keyword":"","response":"","action":""}]\n' +
+    '}';
 }
 
 function pMeta(b){
@@ -1555,10 +1770,10 @@ function rStrat(d){
   let h=stdBanner();
   if(d.campaignName){
     const ct=`${d.campaignName}\n\n${d.whyStatement||''}\n\n${d.coreMessage||''}`;
-    h+=`<div class="card card-cyan"><div class="output-row">${cp('st1',ct)}</div><div class="campaign-name">${d.campaignName}</div>${d.whyStatement?`<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:8px">WHY: ${d.whyStatement}</p>`:''} ${d.coreMessage?`<p style="font-size:15px;font-weight:500;color:var(--navy);line-height:1.6">${d.coreMessage}</p>`:''}</div>`;
+    h+=`<div class="card card-cyan"><div class="output-row">${cp('st1',ct)}</div><div class="campaign-name">${d.campaignName}</div>${d.whyStatement?`<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:8px">${tip('WHY Statement', 'WHY')}: ${d.whyStatement}</p>`:''} ${d.coreMessage?`<p style="font-size:15px;font-weight:500;color:var(--navy);line-height:1.6">${d.coreMessage}</p>`:''}</div>`;
   }
   if(d.threePains){
-    h+=`<div class="card"><div class="section-label">Three Levels of Client Pain — StoryBrand</div><div class="pain-grid"><div class="pain-box ext"><div class="pain-label">External</div><div class="pain-text">${d.threePains.external||''}</div></div><div class="pain-box int"><div class="pain-label">Internal</div><div class="pain-text">${d.threePains.internal||''}</div></div><div class="pain-box phi"><div class="pain-label">Philosophical</div><div class="pain-text">${d.threePains.philosophical||''}</div></div></div></div>`;
+    h+=`<div class="card"><div class="section-label">${tip('Three Levels of Pain', 'Three Levels of Client Pain')} — StoryBrand</div><div class="pain-grid"><div class="pain-box ext"><div class="pain-label">External</div><div class="pain-text">${d.threePains.external||''}</div></div><div class="pain-box int"><div class="pain-label">Internal</div><div class="pain-text">${d.threePains.internal||''}</div></div><div class="pain-box phi"><div class="pain-label">Philosophical</div><div class="pain-text">${d.threePains.philosophical||''}</div></div></div></div>`;
   }
   if(d.phases?.length){
     h+=`<div class="card"><div class="section-label">Campaign Phases — Jeff Walker Launch Sequence</div>${d.phases.map(p=>`<div class="phase"><div class="phase-title">${p.phase}</div><div class="phase-timing">${p.timing}</div><div class="kv"><div class="k">Objective</div><div class="v">${p.objective}</div></div><div class="kv"><div class="k">Content Focus</div><div class="v">${p.contentFocus}</div></div><div class="kv"><div class="k">Mental Trigger</div><div class="v v-gold">${p.trigger}</div></div></div>`).join('')}</div>`;
@@ -1706,12 +1921,12 @@ function rLead(d){
     const lm=d.leadMagnet;
     const isPass=(lm.valueCheck||'').toLowerCase().startsWith('yes');
     const whyBlock = lm.whyThisFormat ? `<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--teal)"><strong>Why this format:</strong> ${lm.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — Lead Magnet</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)', 'the lead magnet')}</div>`;
+    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — ${tip('Lead Magnet')}</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)', 'the lead magnet')}</div>`;
   }
   if(d.feo){
     const feo=d.feo;
     const whyBlock = feo.whyThisFormat ? `<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--gold)"><strong>Why this format:</strong> ${feo.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — FEO</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)', 'the FEO')}</div>`;
+    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — ${tip('FEO')}</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)', 'the FEO')}</div>`;
   }
   if(d.reactivationOption){
     const r=d.reactivationOption;
@@ -1823,6 +2038,29 @@ function rDM(d){
 function rManyChat(d,b){
   if(!d)return;
   let h=stdBanner();
+
+  // TIER 2.3: Visual flow map at the top — shows the structure of the
+  // ManyChat automation as boxes connected with arrows. Built from
+  // d.flowMap (an array of {step, label, detail}).
+  if (d.flowMap && d.flowMap.length) {
+    const colors = ['var(--cyan)', 'var(--teal)', 'var(--green)', 'var(--gold)', 'var(--amber)', 'var(--navy)'];
+    h += '<div class="card card-cyan"><div class="section-label">ManyChat Flow Map</div>' +
+      '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">Top-down structure of the automation. Each step links to its detailed message below.</div>' +
+      '<div style="display:flex;flex-direction:column;gap:0;align-items:center">';
+    d.flowMap.forEach((s, i) => {
+      const color = colors[i % colors.length];
+      h += '<div style="background:#fff;border:2px solid ' + color + ';border-radius:10px;padding:12px 18px;min-width:280px;max-width:480px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.04)">' +
+        '<div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:' + color + ';font-weight:700;margin-bottom:4px">' + (s.step || '') + '</div>' +
+        '<div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:' + (s.detail ? '4px' : '0') + '">' + (s.label || '') + '</div>' +
+        (s.detail ? '<div style="font-size:11px;color:var(--textSub)">' + s.detail + '</div>' : '') +
+      '</div>';
+      if (i < d.flowMap.length - 1) {
+        h += '<div style="font-size:22px;color:var(--borderMid);line-height:1;padding:6px 0">↓</div>';
+      }
+    });
+    h += '</div></div>';
+  }
+
   if(d.welcomeFlow){
     const wf=d.welcomeFlow;
     const wfTxt=wf.opener+'\n\n'+wf.leadCapture;
@@ -1840,6 +2078,16 @@ function rManyChat(d,b){
     lmFields.forEach(function(pair){h+='<div class="section-label" style="margin-top:12px">'+pair[0]+'</div><div class="dm-bubble">'+(pair[1]||'')+'</div>';});
     h+='</div>';
   }
+  // TIER 2.3: FEO booking flow — new in this round.
+  if (d.feoFlow) {
+    const ff = d.feoFlow;
+    const ffTxt = [ff.openerForFEO, ff.valueRecap, ff.offerMessage, ff.bookingLink, ff.fallbackIfNoReply].filter(Boolean).join('\n\n');
+    h += '<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">FEO Booking Flow</span>' + cp('mc_feo', ffTxt) + '</div>';
+    const ffFields = [['Trigger', ff.trigger], ['Opener for FEO pitch', ff.openerForFEO], ['Value recap', ff.valueRecap], ['Offer message', ff.offerMessage], ['Booking link / next step', ff.bookingLink], ['Fallback if no reply', ff.fallbackIfNoReply]];
+    ffFields.forEach(pair => { if (pair[1]) h += '<div class="section-label" style="margin-top:12px">' + pair[0] + '</div><div class="dm-bubble">' + pair[1] + '</div>'; });
+    h += '</div>';
+  }
+
   if(d.gymFloorFlow){
     const gf=d.gymFloorFlow;
     h+='<div class="card card-purple"><div class="output-row"><span class="badge badge-purple">Gym Floor Flow</span>'+cp('mc_gf',(gf.opener||'')+'\n\n'+(gf.qualifier||'')+'\n\n'+(gf.bookingCTA||''))+'</div>';
@@ -2260,9 +2508,7 @@ async function regenerateCurrentTab() {
       if (!r) throw new Error('Content Plan regenerate failed — try again.');
       rContent(r); S.res.content = r;
     } else if (tab === 6) {
-      const r1 = await api(sys, pEmail(b, '1-3'), 4000);
-      const r2 = await api(sys, pEmail(b, '4-6'), 4000);
-      const r = mergeEmail(r1, r2);
+      const r = await generateEmailBatches(b, sys);
       if (!r) throw new Error('Email Sequence regenerate failed — try again.');
       rEmail(r); S.res.email = r;
     } else if (tab === 7) {
@@ -2358,6 +2604,11 @@ function tryRestoreBanner() {
       setVal('f_convLeadConsult', b.convLeadConsult); setVal('f_convConsultClose', b.convConsultClose);
       // Tier 1 — sales path + channel ticks
       setVal('f_salesPath', b.salesPath);
+      // Tier 2.3 — email + manychat
+      if (b.emailCount) setVal('f_emailCount', String(b.emailCount));
+      if (b.emailDayZero != null) setVal('f_emailDayZero', b.emailDayZero ? '1' : '0');
+      if (b.emailSamples) setVal('f_emailSamples', b.emailSamples);
+      if (b.manychatPurpose) setVal('f_manychatPurpose', b.manychatPurpose);
       const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
       if (b.channels) {
         setChk('f_chan_landing',  b.channels.landing);
