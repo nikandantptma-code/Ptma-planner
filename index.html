@@ -97,6 +97,7 @@ body {
 .badge-red    { background: var(--redLight);    color: var(--red);       border-color: #F0C0BC; }
 
 /* ── TABS ── */
+/* TIER 2.1: sticky so they stay visible during long Content Plan / Email scrolls. */
 .tabs {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -104,6 +105,10 @@ body {
   padding: 0 20px;
   scrollbar-width: none;
   gap: 2px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 0 var(--border);
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
@@ -609,27 +614,27 @@ select option { background: #fff; }
 
 <!-- PAGE 3: STRATEGY -->
 <div class="page" id="page3">
-  <div id="stratOut"><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">No campaign yet</div><div class="empty-sub">Complete the Campaign Brief to generate your plan</div></div></div>
+  <div id="stratOut"><div class="empty"><div class="empty-icon">👈</div><div class="empty-title">Nothing here yet</div><div class="empty-sub">Head to the <strong>Campaign Brief</strong> tab, fill it in, then click <strong>Generate my campaign plan</strong>. This tab will fill in automatically.</div><button onclick="showTab(2)" style="margin-top:14px;background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Go to Campaign Brief →</button></div></div>
 </div>
 
 <!-- PAGE 4: LEAD GEN -->
 <div class="page" id="page4">
-  <div id="leadOut"><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">No campaign yet</div><div class="empty-sub">Complete the Campaign Brief to generate your plan</div></div></div>
+  <div id="leadOut"><div class="empty"><div class="empty-icon">👈</div><div class="empty-title">Nothing here yet</div><div class="empty-sub">Head to the <strong>Campaign Brief</strong> tab, fill it in, then click <strong>Generate my campaign plan</strong>. This tab will fill in automatically.</div><button onclick="showTab(2)" style="margin-top:14px;background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Go to Campaign Brief →</button></div></div>
 </div>
 
 <!-- PAGE 5: CONTENT -->
 <div class="page" id="page5">
-  <div id="contentOut"><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">No campaign yet</div><div class="empty-sub">Complete the Campaign Brief to generate your plan</div></div></div>
+  <div id="contentOut"><div class="empty"><div class="empty-icon">👈</div><div class="empty-title">Nothing here yet</div><div class="empty-sub">Head to the <strong>Campaign Brief</strong> tab, fill it in, then click <strong>Generate my campaign plan</strong>. This tab will fill in automatically.</div><button onclick="showTab(2)" style="margin-top:14px;background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Go to Campaign Brief →</button></div></div>
 </div>
 
 <!-- PAGE 6: EMAILS -->
 <div class="page" id="page6">
-  <div id="emailOut"><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">No campaign yet</div><div class="empty-sub">Complete the Campaign Brief to generate your plan</div></div></div>
+  <div id="emailOut"><div class="empty"><div class="empty-icon">👈</div><div class="empty-title">Nothing here yet</div><div class="empty-sub">Head to the <strong>Campaign Brief</strong> tab, fill it in, then click <strong>Generate my campaign plan</strong>. This tab will fill in automatically.</div><button onclick="showTab(2)" style="margin-top:14px;background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Go to Campaign Brief →</button></div></div>
 </div>
 
 <!-- PAGE 7: DMS -->
 <div class="page" id="page7">
-  <div id="dmOut"><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">No campaign yet</div><div class="empty-sub">Complete the Campaign Brief to generate your plan</div></div></div>
+  <div id="dmOut"><div class="empty"><div class="empty-icon">👈</div><div class="empty-title">Nothing here yet</div><div class="empty-sub">Head to the <strong>Campaign Brief</strong> tab, fill it in, then click <strong>Generate my campaign plan</strong>. This tab will fill in automatically.</div><button onclick="showTab(2)" style="margin-top:14px;background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Go to Campaign Brief →</button></div></div>
 </div>
 
 <!-- PAGE 8: META -->
@@ -1080,6 +1085,106 @@ function mergeEmail(em1, em2) {
 // real progress. After every section finishes, the entire campaign is written
 // to localStorage so a refresh doesn't lose work.
 const SAVE_KEY = 'ptma_campaign_v1';
+const FORM_DRAFT_KEY = 'ptma_form_draft_v1';
+
+// TIER 2.1: Form auto-save. Persists the brief inputs to localStorage on every
+// keystroke / toggle so a refresh or accidental tab close doesn't lose what
+// the coach has typed. Separate from saveCampaign() which persists generated
+// RESULTS. Restored on page load (overridden if user picks 'Restore' on the
+// generated-campaign banner).
+function saveFormDraft() {
+  try {
+    const b = (typeof bf === 'function') ? bf() : null;
+    if (b) localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(b));
+  } catch (e) { /* quota or pre-init — ignore */ }
+}
+function restoreFormDraft() {
+  let raw;
+  try { raw = localStorage.getItem(FORM_DRAFT_KEY); } catch { return; }
+  if (!raw) return;
+  let b;
+  try { b = JSON.parse(raw); } catch { return; }
+  if (!b) return;
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null && v !== '') el.value = v; };
+  setVal('f_niche', b.niche); setVal('f_offer', b.offer); setVal('f_price', b.price);
+  setVal('f_goal', b.goal);   setVal('f_ltv', b.ltv);
+  setVal('f_salesPath', b.salesPath);
+  setVal('f_convLeadConsult', b.convLeadConsult); setVal('f_convConsultClose', b.convConsultClose);
+  setVal('f_obj', b.obj); setVal('f_month', b.month); setVal('f_start', b.start); setVal('f_launch', b.launch);
+  if (b.channels) {
+    const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+    setChk('f_chan_landing',  b.channels.landing);
+    setChk('f_chan_gymfloor', b.channels.gymfloor);
+    setChk('f_chan_social',   b.channels.social);
+    setChk('f_chan_email',    b.channels.email);
+    setChk('f_chan_dm',       b.channels.dm);
+    setChk('f_chan_paid',     b.channels.paid);
+  }
+  if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
+}
+function wireFormAutoSave() {
+  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', saveFormDraft);
+    el.addEventListener('change', saveFormDraft);
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => { restoreFormDraft(); wireFormAutoSave(); setupCollapsibles(); });
+} else {
+  setTimeout(() => { restoreFormDraft(); wireFormAutoSave(); setupCollapsibles(); }, 0);
+}
+
+// TIER 2.1: Collapsible Brief sections. Optional cards default to collapsed
+// so the Brief feels shorter. Mandatory cards stay open. Click the title to toggle.
+function makeCollapsible(cardEl, defaultCollapsed) {
+  if (!cardEl || cardEl.dataset.collapsibleInit === '1') return;
+  cardEl.dataset.collapsibleInit = '1';
+  const title = cardEl.querySelector('.card-title');
+  if (!title) return;
+  // Add chevron indicator
+  const chev = document.createElement('span');
+  chev.className = 'card-chev';
+  chev.style.cssText = 'float:right;font-size:16px;color:var(--textSub);transition:transform 0.2s;user-select:none;margin-left:8px';
+  chev.textContent = '▾';
+  title.appendChild(chev);
+  title.style.cursor = 'pointer';
+  title.style.userSelect = 'none';
+  // Decide where the collapsible body starts — after sub if it exists, otherwise after title.
+  const sub = cardEl.querySelector('.card-sub');
+  const startAfter = sub || title;
+  // Wrap everything after startAfter into a body div
+  const wrapper = document.createElement('div');
+  wrapper.className = 'card-body-collapsible';
+  let next = startAfter.nextSibling;
+  while (next) {
+    const cur = next;
+    next = next.nextSibling;
+    wrapper.appendChild(cur);
+  }
+  cardEl.appendChild(wrapper);
+  let collapsed = !!defaultCollapsed;
+  const apply = () => {
+    wrapper.style.display = collapsed ? 'none' : '';
+    chev.style.transform = collapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+  };
+  apply();
+  title.addEventListener('click', () => { collapsed = !collapsed; apply(); });
+}
+function setupCollapsibles() {
+  const eyebrows = document.querySelectorAll('.card-eyebrow');
+  eyebrows.forEach(eb => {
+    const txt = (eb.textContent || '').trim().toLowerCase();
+    const card = eb.closest('.card');
+    if (!card) return;
+    // Make these 3 optional Brief cards collapsible (default closed)
+    if (txt.includes('how you sell') || txt.includes('distribution channels') || txt.includes('optional extras') || txt.includes('funnel conversion')) {
+      makeCollapsible(card, true);
+    }
+  });
+}
 
 function markStep(idx, status) {
   const el = document.getElementById('step' + idx);
