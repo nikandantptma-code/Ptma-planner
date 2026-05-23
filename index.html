@@ -1509,7 +1509,7 @@ async function generate() {
         if(mc){rManyChat(mc,b); S.res.manychat=mc; saveCampaign(b);}
       }
       if(b.opts.meta){
-        const mt = await api(sys,pMeta(b),3500);
+        const mt = await api(sys,pMeta(b),6500);
         if(mt){rMeta(mt,b); S.res.meta=mt; saveCampaign(b);}
       }
       if (wantsGymFloor) {
@@ -1779,12 +1779,102 @@ function pManyChat(b){
     '}';
 }
 
+// TIER 2.5: Meta Ads overhauled \u2014 three per-objective variants (Awareness, Leads,
+// Engagement), Campaign/AdSet/Creatives structure for direct Meta Ads Manager use,
+// flight dates auto-populated from the brief's Start \u2192 Launch.
 function pMeta(b){
   const ltv = b.ltv ? parseInt(b.ltv) : null;
   const price = b.price ? parseInt(b.price) : null;
-  const ltvNote = ltv && price ? 'Client LTV: \u00a3'+b.ltv+'. Max CPL based on LTV: \u00a3'+(ltv*0.2).toFixed(0)+' (20% CAC). Max CPL based on front end: \u00a3'+(price*0.3).toFixed(0)+' (30% CAC). Show CPL ranges using both.' : '';
-  return 'Meta advertising. Niche: '+b.niche+' | Offer: "'+b.offer+'"'+(b.price?' at \u00a3'+b.price:'')+' | Objective: '+b.obj+' | Month: '+b.month+(ltvNote?' | '+ltvNote:'')+
-    '\nReturn: {"coldAd":{"campaignObjective":"","primaryText":"","headline":"","description":"","ctaButton":"","creativeDirection":"","audienceNotes":""},"warmRetarget":{"audience":"","primaryText":"","headline":"","ctaButton":"","budgetNote":""},"leadForm":{"formHeadline":"","introParagraph":"","questions":[],"thankYouMessage":"","followUpAction":""},"budgetFramework":{"dailyBudget":"","flightDates":"","expectedCPL":"","expectedCPLBasedOnLTV":"","expectedConversionRate":"","breakEven":"","ltvNote":""}}';
+  const ltvNote = ltv && price
+    ? 'Client LTV: \u00a3' + b.ltv + '. Max CPL based on LTV: \u00a3' + (ltv * 0.2).toFixed(0) + ' (20% CAC). Max CPL based on front end: \u00a3' + (price * 0.3).toFixed(0) + ' (30% CAC). Show CPL ranges using BOTH.'
+    : '';
+  // Compute flight from Brief dates
+  const flightLine = (b.start && b.launch)
+    ? 'Flight: ' + b.start + ' to ' + b.launch + ' (use these exact dates in budgetFramework.flightDates).'
+    : 'Flight dates: tied to Campaign Start \u2192 Launch dates the coach picks in the Brief.';
+  // Reference the actual lead magnet / FEO so creatives are specific
+  const lm  = S.res && S.res.lead && S.res.lead.leadMagnet;
+  const feo = S.res && S.res.lead && S.res.lead.feo;
+  const lmRef  = lm  ? '"' + (lm.name || '')  + '" (' + (lm.format || '')  + ')' : 'the lead magnet';
+  const feoRef = feo ? '"' + (feo.name || '') + '" (' + (feo.format || '') + ')' : 'the FEO';
+
+  return 'Meta Ads campaign \u2014 generate THREE separate cold-traffic ad variants (one per objective) plus a warm retargeting ad, the Meta Ads Manager structure, and a budget framework with split.\n' +
+    'Niche: ' + b.niche + ' | Core offer: "' + b.offer + '"' + (b.price ? ' at \u00a3' + b.price : '') + ' | Objective: ' + b.obj + ' | Month: ' + b.month + pathChannelsCtx(b) +
+    (ltvNote ? ' | ' + ltvNote : '') + ' | ' + flightLine +
+    '\n\nReference the actual offers in creative concepts:\n   \u2022 Lead magnet: ' + lmRef + '\n   \u2022 FEO: ' + feoRef + '\n' +
+    '\nFOLLOW META\'S REAL HIERARCHY: Campaign \u2192 Ad Set (audience + budget + placements) \u2192 Creative (the actual ad). Each cold ad variant should have a different campaign objective in Meta:\n' +
+    '   \u2022 Awareness \u2014 top of funnel. Optimise for Reach / Video Views. Audience is BROAD lookalike or interest-based. Creative is problem-aware, scroll-stopping, low-friction CTA (no link needed, just brand recall).\n' +
+    '   \u2022 Leads \u2014 mid funnel. Optimise for Leads (instant form or website conversion). Audience is more refined. Creative directly offers the lead magnet with a clear CTA to opt in.\n' +
+    '   \u2022 Engagement \u2014 for content / community. Optimise for Engagement / Messages / Post Engagement. Audience is interest + competitor follow. Creative invites comment, DM or save.\n' +
+    '\nTONE: Hormozi-direct, specific to the niche\'s pain. No marketing-speak. Each ad must read like the coach personally wrote it, not an agency.\n' +
+    '\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
+    '{\n' +
+    '  "structure": {\n' +
+    '    "campaigns": [\n' +
+    '      {"name":"e.g. \\"Father Figure \u2014 Awareness\\"","objective":"Awareness","budgetSplit":"e.g. 25% of total","purpose":"why this campaign exists in the funnel"},\n' +
+    '      {"name":"","objective":"Leads","budgetSplit":"","purpose":""},\n' +
+    '      {"name":"","objective":"Engagement","budgetSplit":"","purpose":""},\n' +
+    '      {"name":"e.g. \\"Father Figure \u2014 Warm Retarget\\"","objective":"Conversions","budgetSplit":"","purpose":""}\n' +
+    '    ]\n' +
+    '  },\n' +
+    '  "awarenessAd": {\n' +
+    '    "campaignObjective": "Awareness / Reach / Video Views",\n' +
+    '    "audienceTargeting": "specific audience description for Meta Ads Manager",\n' +
+    '    "placements": "e.g. Reels, Stories, Feed",\n' +
+    '    "primaryText": "the actual ad copy \u2014 first 125 chars hook the most",\n' +
+    '    "headline": "max 27 chars ideal",\n' +
+    '    "description": "max 27 chars",\n' +
+    '    "ctaButton": "Learn More / Watch More / etc",\n' +
+    '    "creativeDirection": "specific creative brief \u2014 what to film/design",\n' +
+    '    "hookOpenerOptions": ["", "", ""],\n' +
+    '    "kpisToWatch": "what numbers prove it\'s working"\n' +
+    '  },\n' +
+    '  "leadAd": {\n' +
+    '    "campaignObjective": "Leads (Instant Form or Website Conversions)",\n' +
+    '    "audienceTargeting": "",\n' +
+    '    "placements": "",\n' +
+    '    "primaryText": "directly offers the lead magnet by name",\n' +
+    '    "headline": "",\n' +
+    '    "description": "",\n' +
+    '    "ctaButton": "Sign Up / Download / Get Started",\n' +
+    '    "creativeDirection": "",\n' +
+    '    "leadFormQuestions": ["", "", ""],\n' +
+    '    "thankYouMessage": "what they see after submitting",\n' +
+    '    "kpisToWatch": ""\n' +
+    '  },\n' +
+    '  "engagementAd": {\n' +
+    '    "campaignObjective": "Engagement / Messages / Post Engagement",\n' +
+    '    "audienceTargeting": "",\n' +
+    '    "placements": "",\n' +
+    '    "primaryText": "designed to spark comments, saves, shares, or DMs",\n' +
+    '    "headline": "",\n' +
+    '    "description": "",\n' +
+    '    "ctaButton": "Send Message / Like Page / Save",\n' +
+    '    "creativeDirection": "",\n' +
+    '    "engagementHook": "what specifically prompts the engagement action",\n' +
+    '    "kpisToWatch": ""\n' +
+    '  },\n' +
+    '  "warmRetarget": {\n' +
+    '    "audience": "specific retargeting audience (e.g. site visitors last 30d, lead-magnet downloaders, video viewers > 50%)",\n' +
+    '    "primaryText": "warmer tone \u2014 references they\'ve seen the coach before",\n' +
+    '    "headline": "",\n' +
+    '    "description": "",\n' +
+    '    "ctaButton": "Book Now / Sign Up / Apply Now",\n' +
+    '    "creativeDirection": "",\n' +
+    '    "budgetNote": ""\n' +
+    '  },\n' +
+    '  "budgetFramework": {\n' +
+    '    "dailyBudget": "e.g. \u00a330/day total",\n' +
+    '    "totalBudget": "compute from daily \u00d7 number of days in flight",\n' +
+    '    "flightDates": "' + (b.start && b.launch ? b.start + ' to ' + b.launch : 'TBD') + '",\n' +
+    '    "splitAcrossCampaigns": "e.g. Awareness 25% \u00b7 Leads 50% \u00b7 Engagement 10% \u00b7 Warm Retarget 15%",\n' +
+    '    "expectedCPL": "front-end CPL target",\n' +
+    '    "expectedCPLBasedOnLTV": "LTV-based CPL ceiling",\n' +
+    '    "expectedConversionRate": "lead \u2192 client %",\n' +
+    '    "breakEven": "how many sales needed to break even on ad spend",\n' +
+    '    "ltvNote": "one-line note on why these numbers are sensible for this niche"\n' +
+    '  }\n' +
+    '}';
 }
 
 // TIER 2.4: pGymFloor \u2014 generates niche-specific gym-floor scripts following
@@ -2226,38 +2316,126 @@ function rManyChat(d,b){
   document.getElementById('manychatOut').innerHTML=h;
 }
 
-function rMeta(d,b){
-  if(!d) return;
-  let h=stdBanner();
-  if(d.budgetFramework){
-    const bf=d.budgetFramework;
-    let budgetHtml='<div class="card"><div class="section-label">Budget Framework + CPL Targets</div>';
-    if(bf.ltvNote)budgetHtml+='<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--teal)">'+bf.ltvNote+'</div>';
-    const fields=[['Daily Budget',bf.dailyBudget,'v-gold'],['Flight Dates',bf.flightDates,'v'],['CPL Target (front end)',bf.expectedCPL,'v-green'],['CPL Target (LTV basis)',bf.expectedCPLBasedOnLTV,'v-cyan'],['Conversion Rate',bf.expectedConversionRate,'v'],['Break Even',bf.breakEven,'v']];
-    budgetHtml+='<div class="grid-2">'+fields.filter(([,v])=>v).map(([k,v,cls])=>'<div class="kv"><div class="k">'+k+'</div><div class="v '+(cls||'')+'">'+v+'</div></div>').join('')+'</div></div>';
-    h+=budgetHtml;
+// TIER 2.5: Meta Ads renderer rebuilt — Campaign/Ad Set/Creatives structure
+// diagram at the top, then 3 per-objective cold ad variants + warm retarget +
+// budget framework. Backwards-compatible: renders OLD shape too if present.
+function rMeta(d, b) {
+  if (!d) return;
+  let h = stdBanner();
+  const init = (b && b.niche ? b.niche : 'PT').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+
+  // 1. Campaign structure diagram (new) — shows the Meta Ads Manager hierarchy
+  if (d.structure && d.structure.campaigns && d.structure.campaigns.length) {
+    const objColor = { Awareness:'var(--cyan)', Reach:'var(--cyan)', Leads:'var(--green)', Engagement:'var(--gold)', Conversions:'var(--amber)', Sales:'var(--amber)', Traffic:'var(--teal)' };
+    h += '<div class="card card-cyan"><div class="section-label">Meta Ads Manager — Campaign Structure</div>' +
+      '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">Set these up in Meta Ads Manager as separate campaigns. Each one has its own objective, audience, and budget split.</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">';
+    d.structure.campaigns.forEach(c => {
+      const color = objColor[c.objective] || 'var(--navy)';
+      h += '<div style="flex:1;min-width:200px;background:#fff;border:2px solid ' + color + ';border-radius:10px;padding:14px;box-shadow:0 2px 6px rgba(0,0,0,0.04)">' +
+        '<div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:' + color + ';font-weight:700;margin-bottom:6px">' + (c.objective || '') + '</div>' +
+        '<div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:6px">' + (c.name || '') + '</div>' +
+        (c.budgetSplit ? '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">' + c.budgetSplit + '</div>' : '') +
+        (c.purpose ? '<div style="font-size:11px;color:var(--textSub);line-height:1.45">' + c.purpose + '</div>' : '') +
+      '</div>';
+    });
+    h += '</div></div>';
   }
-  if(d.coldAd){
-    const ca=d.coldAd;
-    const init=(b.niche||'PT').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    h+=`<div class="card card-cyan"><div class="output-row"><span class="badge badge-cyan">Cold Audience Ad</span><span style="font-size:11px;color:var(--textSub)">${ca.campaignObjective}</span>${cp('meta_c',`PRIMARY TEXT:\n${ca.primaryText}\n\nHEADLINE: ${ca.headline}\n\nDESCRIPTION: ${ca.description}\n\nCTA: ${ca.ctaButton}`)}</div>
-    <div class="ad-wrap"><div class="ad-header"><div class="ad-avatar">${init}</div><div><div class="ad-name">${b.niche} Coach</div><div class="ad-tag">Sponsored</div></div></div>
-    <div class="ad-body">
-      <div class="ad-primary">${(ca.primaryText||'').replace(/\n/g,'<br>')}</div>
-      <div class="ad-image-area"><p style="font-size:12px;color:var(--textSub)">📹 Creative direction:<br>${ca.creativeDirection}</p></div>
-      <div class="ad-footer"><div><div class="ad-headline">${ca.headline}</div><div class="ad-description">${ca.description}</div></div><button class="ad-cta">${ca.ctaButton}</button></div>
-    </div></div>
-    ${ca.audienceNotes?`<div class="kv" style="margin-top:14px"><div class="k">Audience Notes</div><div class="v">${ca.audienceNotes}</div></div>`:''}</div>`;
+
+  // 2. Budget framework (now goes FIRST among details so coaches see CPL targets early)
+  if (d.budgetFramework) {
+    const bf = d.budgetFramework;
+    let budgetHtml = '<div class="card"><div class="section-label">Budget Framework + ' + tip('CPL') + ' Targets</div>';
+    if (bf.ltvNote) budgetHtml += '<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--teal)">' + bf.ltvNote + '</div>';
+    const fields = [
+      ['Daily Budget', bf.dailyBudget, 'v-gold'],
+      ['Total Budget', bf.totalBudget, 'v-gold'],
+      ['Flight Dates', bf.flightDates, 'v'],
+      ['Split Across Campaigns', bf.splitAcrossCampaigns, 'v-cyan'],
+      ['CPL Target (front end)', bf.expectedCPL, 'v-green'],
+      ['CPL Target (LTV basis)', bf.expectedCPLBasedOnLTV, 'v-cyan'],
+      ['Lead → Client Conversion', bf.expectedConversionRate, 'v'],
+      ['Break Even', bf.breakEven, 'v']
+    ];
+    budgetHtml += '<div class="grid-2">' + fields.filter(([,v]) => v).map(([k,v,cls]) => '<div class="kv"><div class="k">' + k + '</div><div class="v ' + (cls||'') + '">' + v + '</div></div>').join('') + '</div></div>';
+    h += budgetHtml;
   }
-  if(d.warmRetarget){
-    const wr=d.warmRetarget;
-    h+=`<div class="card card-amber"><div class="output-row"><span class="badge badge-amber">Warm Retargeting Ad</span>${cp('meta_r',`${wr.primaryText}\n\nHeadline: ${wr.headline}`)}</div><div class="kv"><div class="k">Audience</div><div class="v">${wr.audience}</div></div><div class="dm-bubble" style="margin-top:10px">${wr.primaryText}</div><div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card2);border-radius:8px;margin-top:10px"><div style="font-size:14px;font-weight:600">${wr.headline}</div><button class="ad-cta">${wr.ctaButton}</button></div><div class="kv" style="margin-top:12px"><div class="k">Budget Note</div><div class="v">${wr.budgetNote}</div></div></div>`;
+
+  // 3. Per-objective ad variant renderer (reusable)
+  const renderAd = (ad, label, accent, cardClass, badgeClass, copyId) => {
+    if (!ad) return '';
+    const copyText = 'CAMPAIGN OBJECTIVE: ' + (ad.campaignObjective || '') +
+      '\nAUDIENCE: ' + (ad.audienceTargeting || '') +
+      '\nPLACEMENTS: ' + (ad.placements || '') +
+      '\n\nPRIMARY TEXT:\n' + (ad.primaryText || '') +
+      '\n\nHEADLINE: ' + (ad.headline || '') +
+      '\nDESCRIPTION: ' + (ad.description || '') +
+      '\nCTA: ' + (ad.ctaButton || '') +
+      '\n\nCREATIVE: ' + (ad.creativeDirection || '');
+    let inner = '<div class="card ' + cardClass + '"><div class="output-row">' +
+      '<span class="badge ' + badgeClass + '">' + label + '</span>' +
+      (ad.campaignObjective ? '<span style="font-size:11px;color:var(--textSub);margin-left:8px">Objective: ' + ad.campaignObjective + '</span>' : '') +
+      cp(copyId, copyText) + '</div>';
+    // Ad Set details
+    if (ad.audienceTargeting || ad.placements) {
+      inner += '<div style="padding:10px 14px;background:var(--card2);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--textMid)">' +
+        '<div style="font-weight:700;color:var(--navy);margin-bottom:6px;font-size:10px;letter-spacing:0.05em;text-transform:uppercase">Ad Set</div>' +
+        (ad.audienceTargeting ? '<div style="margin-bottom:4px"><strong>Audience:</strong> ' + ad.audienceTargeting + '</div>' : '') +
+        (ad.placements ? '<div><strong>Placements:</strong> ' + ad.placements + '</div>' : '') +
+        '</div>';
+    }
+    // Ad creative mock-up
+    inner += '<div class="ad-wrap"><div class="ad-header"><div class="ad-avatar">' + init + '</div><div><div class="ad-name">' + (b && b.niche ? b.niche : 'Coach') + '</div><div class="ad-tag">Sponsored</div></div></div>' +
+      '<div class="ad-body">' +
+        (ad.primaryText ? '<div class="ad-primary">' + ad.primaryText.replace(/\n/g, '<br>') + '</div>' : '') +
+        '<div class="ad-image-area"><p style="font-size:12px;color:var(--textSub)">📹 Creative direction:<br>' + (ad.creativeDirection || '') + '</p></div>' +
+        '<div class="ad-footer"><div><div class="ad-headline">' + (ad.headline || '') + '</div><div class="ad-description">' + (ad.description || '') + '</div></div><button class="ad-cta">' + (ad.ctaButton || '') + '</button></div>' +
+      '</div></div>';
+    // Hook options
+    if (ad.hookOpenerOptions && ad.hookOpenerOptions.length) {
+      inner += '<div class="section-label" style="margin-top:14px">Hook opener variations to A/B test</div>';
+      ad.hookOpenerOptions.filter(Boolean).forEach(opt => inner += '<div class="dm-bubble" style="margin-bottom:6px">' + opt + '</div>');
+    }
+    // Lead form
+    if (ad.leadFormQuestions && ad.leadFormQuestions.length) {
+      inner += '<div class="section-label" style="margin-top:14px">Lead form questions</div>' +
+        '<ol style="margin:0;padding-left:22px;font-size:13px;color:var(--text);line-height:1.8">' +
+        ad.leadFormQuestions.filter(Boolean).map(q => '<li>' + q + '</li>').join('') + '</ol>';
+      if (ad.thankYouMessage) inner += '<div class="kv" style="margin-top:10px"><div class="k">Thank-you message</div><div class="v">' + ad.thankYouMessage + '</div></div>';
+    }
+    if (ad.engagementHook) inner += '<div class="kv" style="margin-top:10px"><div class="k">Engagement hook</div><div class="v">' + ad.engagementHook + '</div></div>';
+    if (ad.kpisToWatch) inner += '<div class="kv" style="margin-top:10px"><div class="k">KPIs to watch</div><div class="v v-gold">' + ad.kpisToWatch + '</div></div>';
+    inner += '</div>';
+    return inner;
+  };
+
+  // 4. The three cold ad variants
+  if (d.awarenessAd)  h += renderAd(d.awarenessAd,  'Awareness Ad — top of funnel', 'var(--cyan)',  'card-cyan',  'badge-cyan',  'meta_aw');
+  if (d.leadAd)       h += renderAd(d.leadAd,       'Lead Ad — direct opt-in',       'var(--green)', 'card-green', 'badge-green', 'meta_ld');
+  if (d.engagementAd) h += renderAd(d.engagementAd, 'Engagement Ad — comments / DMs', 'var(--gold)',  'card-gold',  'badge-gold',  'meta_en');
+
+  // 5. Warm retargeting ad (existing — render same way)
+  if (d.warmRetarget) h += renderAd(d.warmRetarget, 'Warm Retargeting — seen you before', 'var(--amber)', 'card-amber', 'badge-amber', 'meta_wr');
+
+  // OLD SCHEMA FALLBACK — if only the legacy coldAd shape is present, render that
+  if (!d.awarenessAd && !d.leadAd && !d.engagementAd && d.coldAd) {
+    h += renderAd(d.coldAd, 'Cold Audience Ad (legacy — regenerate for 3-variant format)', 'var(--cyan)', 'card-cyan', 'badge-cyan', 'meta_c');
   }
-  if(d.leadForm){
-    const lf=d.leadForm;
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Native Lead Form</span>${cp('meta_f',`Form: ${lf.formHeadline}\n\n${lf.introParagraph}\n\nQuestions:\n${(lf.questions||[]).join('\n')}\n\nThank you: ${lf.thankYouMessage}`)}</div><div class="card-title">${lf.formHeadline}</div><p style="font-size:13px;color:var(--textMid);margin:10px 0;line-height:1.6">${lf.introParagraph}</p><div class="section-label">Form Questions</div>${(lf.questions||[]).map((q,i)=>`<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><span style="background:var(--cyanLight);color:var(--teal);border:1px solid var(--cyanBorder);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</span><span style="font-size:13px">${q}</span></div>`).join('')}<div class="divider"></div><div class="kv"><div class="k">Thank You Message</div><div class="v">${lf.thankYouMessage}</div></div><div class="kv"><div class="k">Follow-up Action</div><div class="v v-cyan">${lf.followUpAction}</div></div></div>`;
+  // Old leadForm — only render if not absorbed into leadAd
+  if (!d.leadAd && d.leadForm) {
+    const lf = d.leadForm;
+    h += '<div class="card card-green"><div class="output-row"><span class="badge badge-green">Native Lead Form (legacy)</span>' +
+      cp('meta_f', 'Form: ' + (lf.formHeadline||'') + '\n\n' + (lf.introParagraph||'') + '\n\nQuestions:\n' + (lf.questions||[]).join('\n') + '\n\nThank you: ' + (lf.thankYouMessage||'')) + '</div>' +
+      '<div class="card-title">' + (lf.formHeadline||'') + '</div>' +
+      '<p style="font-size:13px;color:var(--textMid);margin:10px 0;line-height:1.6">' + (lf.introParagraph||'') + '</p>' +
+      '<div class="section-label">Form Questions</div>' +
+      (lf.questions || []).map((q, i) => '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><span style="background:var(--cyanLight);color:var(--teal);border:1px solid var(--cyanBorder);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">' + (i+1) + '</span><span style="font-size:13px">' + q + '</span></div>').join('') +
+      (lf.thankYouMessage ? '<div class="kv"><div class="k">Thank-you message</div><div class="v">' + lf.thankYouMessage + '</div></div>' : '') +
+      (lf.followUpAction ? '<div class="kv"><div class="k">Follow-up action</div><div class="v v-cyan">' + lf.followUpAction + '</div></div>' : '') +
+      '</div>';
   }
-  document.getElementById('metaOut').innerHTML=h;
+
+  document.getElementById('metaOut').innerHTML = h;
 }
 
 // ── RENDER GYM FLOOR ──────────────────────────────────────────────────────
@@ -2678,9 +2856,94 @@ const TAB_TO_MD = {
   6: () => mdEmail(S.res.email),
   7: () => mdDM(S.res.dm),
   8: () => mdGenericFromObj('ManyChat Flow', S.res.manychat),
-  9: () => mdGenericFromObj('Meta Ads', S.res.meta),
+  9: () => mdMeta(S.res.meta),
   10: () => mdGymFloor(S.res.gymfloor)
 };
+
+// TIER 2.5: Markdown export for Meta Ads — proper structure, per-objective sections.
+function mdMeta(d) {
+  if (!d) return '';
+  let m = '# Meta Ads\n\n';
+
+  if (d.structure && d.structure.campaigns && d.structure.campaigns.length) {
+    m += '## Campaign Structure (Meta Ads Manager)\n\n';
+    m += 'Set these up as separate campaigns in Meta Ads Manager. Each has its own objective, audience, and budget split.\n\n';
+    d.structure.campaigns.forEach(c => {
+      m += '### ' + ss(c.name || '') + (c.objective ? ' (' + ss(c.objective) + ')' : '') + '\n';
+      if (c.budgetSplit) m += '- **Budget split:** ' + ss(c.budgetSplit) + '\n';
+      if (c.purpose) m += '- **Purpose:** ' + ss(c.purpose) + '\n';
+      m += '\n';
+    });
+  }
+
+  if (d.budgetFramework) {
+    const bf = d.budgetFramework;
+    m += '## Budget Framework + CPL Targets\n\n';
+    if (bf.dailyBudget)              m += '- **Daily budget:** ' + ss(bf.dailyBudget) + '\n';
+    if (bf.totalBudget)              m += '- **Total budget:** ' + ss(bf.totalBudget) + '\n';
+    if (bf.flightDates)              m += '- **Flight dates:** ' + ss(bf.flightDates) + '\n';
+    if (bf.splitAcrossCampaigns)     m += '- **Split across campaigns:** ' + ss(bf.splitAcrossCampaigns) + '\n';
+    if (bf.expectedCPL)              m += '- **CPL target (front end):** ' + ss(bf.expectedCPL) + '\n';
+    if (bf.expectedCPLBasedOnLTV)    m += '- **CPL ceiling (LTV basis):** ' + ss(bf.expectedCPLBasedOnLTV) + '\n';
+    if (bf.expectedConversionRate)   m += '- **Lead → client conversion:** ' + ss(bf.expectedConversionRate) + '\n';
+    if (bf.breakEven)                m += '- **Break even:** ' + ss(bf.breakEven) + '\n';
+    if (bf.ltvNote)                  m += '\n_' + ss(bf.ltvNote) + '_\n';
+    m += '\n';
+  }
+
+  const mdAd = (ad, title) => {
+    if (!ad) return '';
+    let s = '## ' + title + '\n\n';
+    if (ad.campaignObjective)  s += '_Objective: ' + ss(ad.campaignObjective) + '_\n\n';
+    if (ad.audienceTargeting)  s += '**Audience:** ' + ss(ad.audienceTargeting) + '\n';
+    if (ad.placements)         s += '**Placements:** ' + ss(ad.placements) + '\n\n';
+    if (ad.primaryText)        s += '### Primary text\n> ' + ss(ad.primaryText).replace(/\n/g, '\n> ') + '\n\n';
+    if (ad.headline)           s += '**Headline:** ' + ss(ad.headline) + '\n';
+    if (ad.description)        s += '**Description:** ' + ss(ad.description) + '\n';
+    if (ad.ctaButton)          s += '**CTA button:** ' + ss(ad.ctaButton) + '\n';
+    if (ad.creativeDirection)  s += '\n**Creative direction:** ' + ss(ad.creativeDirection) + '\n';
+    if (ad.hookOpenerOptions?.length) {
+      s += '\n**Hook opener variations (A/B test):**\n';
+      ad.hookOpenerOptions.filter(Boolean).forEach(o => s += '- ' + ss(o) + '\n');
+    }
+    if (ad.leadFormQuestions?.length) {
+      s += '\n**Lead form questions:**\n';
+      ad.leadFormQuestions.filter(Boolean).forEach((q, i) => s += (i+1) + '. ' + ss(q) + '\n');
+      if (ad.thankYouMessage) s += '\n**Thank-you message:** ' + ss(ad.thankYouMessage) + '\n';
+    }
+    if (ad.engagementHook) s += '\n**Engagement hook:** ' + ss(ad.engagementHook) + '\n';
+    if (ad.kpisToWatch)    s += '\n**KPIs to watch:** ' + ss(ad.kpisToWatch) + '\n';
+    if (ad.budgetNote)     s += '\n**Budget note:** ' + ss(ad.budgetNote) + '\n';
+    s += '\n';
+    return s;
+  };
+
+  if (d.awarenessAd)  m += mdAd(d.awarenessAd,  'Awareness Ad — top of funnel');
+  if (d.leadAd)       m += mdAd(d.leadAd,       'Lead Ad — direct opt-in');
+  if (d.engagementAd) m += mdAd(d.engagementAd, 'Engagement Ad — comments / DMs');
+  if (d.warmRetarget) m += mdAd(d.warmRetarget, 'Warm Retargeting Ad');
+
+  // Legacy fallback
+  if (!d.awarenessAd && !d.leadAd && !d.engagementAd && d.coldAd) {
+    m += mdAd(d.coldAd, 'Cold Audience Ad (legacy — regenerate for new format)');
+  }
+  if (!d.leadAd && d.leadForm) {
+    const lf = d.leadForm;
+    m += '## Native Lead Form (legacy)\n\n';
+    if (lf.formHeadline)    m += '**Form headline:** ' + ss(lf.formHeadline) + '\n\n';
+    if (lf.introParagraph)  m += ss(lf.introParagraph) + '\n\n';
+    if (lf.questions?.length) {
+      m += '**Form questions:**\n';
+      lf.questions.forEach((q, i) => m += (i+1) + '. ' + ss(q) + '\n');
+      m += '\n';
+    }
+    if (lf.thankYouMessage) m += '**Thank-you message:** ' + ss(lf.thankYouMessage) + '\n';
+    if (lf.followUpAction)  m += '**Follow-up action:** ' + ss(lf.followUpAction) + '\n';
+    m += '\n';
+  }
+
+  return m;
+}
 
 // TIER 2.4: Markdown export for the Gym Floor 4-step tab.
 function mdGymFloor(d) {
