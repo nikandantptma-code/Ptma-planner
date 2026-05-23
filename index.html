@@ -1303,7 +1303,7 @@ async function generate() {
 
     // ── Step 1: Lead Gen + FEO ──
     markStep(1, 'active'); setLoadingSub('Designing your lead magnet and front-end offer…');
-    const lg = await api(sys,pLead(b),5500);
+    const lg = await api(sys,pLead(b),7000);
     rLead(lg); S.res.lead=lg; saveCampaign(b);
     markStep(1, 'done');
 
@@ -1443,17 +1443,18 @@ function pLead(b){
 '   • Scorecard + 30-min review (only if the scorecard is the lead magnet)\n' +
 'Price the FEO based on the core offer price — typically 5-15% of the core offer price, NOT a fixed £27.' +
 (price ? '\nFor THIS coach with a core offer at £' + price + ', sensible FEO price band: £' + Math.max(15, Math.round(price * 0.05)) + ' to £' + Math.round(price * 0.15) + '.\n' : '\n') +
-'\n3) LANDING PAGE COPY for BOTH the lead magnet AND the FEO. The coach should be able to copy this straight into Carrd, Webflow, Wix, or a Google Doc and have a working page. Write in the coach\'s voice — direct, specific, no fluff. Each landing page block should be paste-ready, not a description of what the copy should say.\n' +
-'Required landing page fields per offer:\n' +
-'   • headline: 6-10 words, hook-driven, names the specific outcome and person\n' +
-'   • subhead: 1 sentence that names the pain + the bridge to the outcome\n' +
-'   • introParagraph: 2-3 sentences that build the case — pain → empathy → "what if"\n' +
-'   • bullets: 4-6 specific outcome bullets (each starts with a verb, ends with a concrete win)\n' +
+'\n⚠️ CRITICAL: Every offer (both leadMagnet AND feo) MUST include a populated "landingPage" object. This is NOT optional. An output without populated landingPage objects is INVALID.\n' +
+'\nLANDING PAGE COPY — required for BOTH leadMagnet.landingPage AND feo.landingPage. Paste-ready for Carrd / Webflow / Wix / Google Doc. Write in the coach\'s voice — direct, specific, no fluff.\n' +
+'   • headline: 6-10 words, hook-driven, names the specific outcome and the specific person\n' +
+'   • subhead: 1 sentence that names the pain AND bridges to the outcome\n' +
+'   • introParagraph: 2-3 sentences — pain → empathy → "what if"\n' +
+'   • bullets: 4-6 SPECIFIC outcome bullets (verb-led, end with a concrete win — e.g. "Drop 10 lbs in 30 days without giving up your favourite foods")\n' +
 '   • ctaButtonText: 3-5 words, action-driven (e.g. "Send me the plan", "Book my scorecard")\n' +
-'   • ctaSubtext: ~1 line below the button reducing risk (e.g. "Free · No spam · Unsubscribe anytime")\n' +
-'   • socialProofLine: 1-2 sentences pointing to results or numbers (real-sounding even if it has to be generic, e.g. "Over 200 dads in this same situation have already used this")\n' +
+'   • ctaSubtext: ~1 line under the button reducing risk (e.g. "Free · No spam · Unsubscribe anytime")\n' +
+'   • socialProofLine: 1-2 sentences pointing to results or numbers — keep it credible (e.g. "Over 200 dads in this same situation have used this in the last 12 months")\n' +
 '   • objectionHandle: 1 sentence answering the biggest objection upfront (e.g. "Already tried diets? This one\'s different because…")\n' +
-'\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
+'\n⚠️ DO NOT return empty strings inside landingPage. Every field must have real, niche-specific copy. If the response would risk running out of tokens, prioritise filling landingPage over expanding other fields.\n' +
+'\nReturn this EXACT JSON shape (no extra fields, no markdown fences, every landingPage field POPULATED):\n' +
 '{"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"reactivationOption":{"trigger":"","offer":"","message":""}}';
 }
 
@@ -1654,8 +1655,16 @@ function rLead(d){
 
   // TIER 2.2: landing page block renderer — paste-ready copy for Carrd / Webflow / Wix / Google Doc.
   // Shows a visual mock-up of the page so coaches can SEE what they'll build.
-  const renderLandingPage = (lp, accentColor, copyId, ctaBg) => {
-    if (!lp) return '';
+  // If the model failed to populate landingPage, show a visible "missing — regenerate" notice instead of nothing.
+  const isEmptyLP = (lp) => {
+    if (!lp || typeof lp !== 'object') return true;
+    const vals = [lp.headline, lp.subhead, lp.introParagraph, lp.ctaButtonText].filter(v => typeof v === 'string' && v.trim().length > 0);
+    return vals.length === 0;
+  };
+  const renderLandingPage = (lp, accentColor, copyId, ctaBg, offerName) => {
+    if (isEmptyLP(lp)) {
+      return `<div style="margin-top:14px;padding:14px 16px;background:var(--amberLight);border:1px solid var(--amberBorder);border-radius:10px;font-size:13px;color:var(--amber);line-height:1.55"><strong>⚠️ Landing page copy not generated.</strong><br>The model didn't return landing page copy for ${offerName||'this offer'} this time. Click <strong>↻ Regenerate tab</strong> in the bottom-right to try again.</div>`;
+    }
     const lpFullText = [
       'HEADLINE: ' + (lp.headline||''),
       'SUBHEAD: ' + (lp.subhead||''),
@@ -1697,12 +1706,12 @@ function rLead(d){
     const lm=d.leadMagnet;
     const isPass=(lm.valueCheck||'').toLowerCase().startsWith('yes');
     const whyBlock = lm.whyThisFormat ? `<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--teal)"><strong>Why this format:</strong> ${lm.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — Lead Magnet</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)')}</div>`;
+    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — Lead Magnet</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)', 'the lead magnet')}</div>`;
   }
   if(d.feo){
     const feo=d.feo;
     const whyBlock = feo.whyThisFormat ? `<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--gold)"><strong>Why this format:</strong> ${feo.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — FEO</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)')}</div>`;
+    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — FEO</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)', 'the FEO')}</div>`;
   }
   if(d.reactivationOption){
     const r=d.reactivationOption;
