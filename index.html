@@ -455,6 +455,7 @@ select option { background: #fff; }
   <button class="tab" onclick="showTab(7)">⑧ DM Scripts</button>
   <button class="tab" id="manychatTab" style="display:none" onclick="showTab(8)">⑨ ManyChat</button>
   <button class="tab" id="metaTab" style="display:none" onclick="showTab(9)">⑩ Meta Ads</button>
+  <button class="tab" id="gymfloorTab" style="display:none" onclick="showTab(10)">⑪ Gym Floor</button>
 </div>
 
 <div class="body">
@@ -730,6 +731,11 @@ select option { background: #fff; }
   <div id="manychatOut"><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">ManyChat not enabled</div><div class="empty-sub">Toggle on ManyChat in the Campaign Brief</div></div></div></div>
 <div class="page" id="page9">
   <div id="metaOut"><div class="empty"><div class="empty-icon">✦</div><div class="empty-title">Meta Ads not enabled</div><div class="empty-sub">Toggle on Meta Ad Copy in the Campaign Brief</div></div></div></div>
+
+<!-- TIER 2.4: PAGE 10 — GYM FLOOR -->
+<div class="page" id="page10">
+  <div id="gymfloorOut"><div class="empty"><div class="empty-icon">🏋️</div><div class="empty-title">Gym Floor not enabled</div><div class="empty-sub">Tick "Gym floor" under Distribution Channels (or set your sales path to "Gym floor only") on the Campaign Brief.</div></div></div>
+</div>
 </div>
 
 </div><!-- /body -->
@@ -1253,6 +1259,19 @@ function wireFormAutoSave() {
     el.addEventListener('input', saveFormDraft);
     el.addEventListener('change', saveFormDraft);
   });
+  // TIER 2.4: also wire the gym-floor channel + sales path to show/hide
+  // the Gym Floor tab in real time as the coach edits the Brief.
+  const updateGymTabVis = () => {
+    const wants = (document.getElementById('f_chan_gymfloor')?.checked) ||
+                  (document.getElementById('f_salesPath')?.value === 'gymfloor');
+    const t = document.getElementById('gymfloorTab');
+    if (t && wants) t.style.display = '';
+  };
+  ['f_chan_gymfloor','f_salesPath'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', updateGymTabVis);
+  });
+  updateGymTabVis();
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => { restoreFormDraft(); wireFormAutoSave(); setupCollapsibles(); });
@@ -1478,8 +1497,11 @@ async function generate() {
     rDM(dm); S.res.dm=dm; saveCampaign(b);
     markStep(4, 'done');
 
-    // ── Step 5: Optional extras (only if toggled on) ──
-    if (b.opts.manychat || b.opts.meta) {
+    // ── Step 5: Optional extras (ManyChat, Meta, Gym Floor) ──
+    // TIER 2.4: Gym Floor generates automatically if the gym floor channel is
+    // ticked OR the sales path is set to 'gymfloor' — no separate toggle needed.
+    const wantsGymFloor = (b.channels && b.channels.gymfloor) || b.salesPath === 'gymfloor';
+    if (b.opts.manychat || b.opts.meta || wantsGymFloor) {
       markStep(5, 'active'); setLoadingSub('Generating optional extras…');
       showGenPill('Generating optional extras…', t0);
       if(b.opts.manychat){
@@ -1489,6 +1511,12 @@ async function generate() {
       if(b.opts.meta){
         const mt = await api(sys,pMeta(b),3500);
         if(mt){rMeta(mt,b); S.res.meta=mt; saveCampaign(b);}
+      }
+      if (wantsGymFloor) {
+        showGenPill('Writing your gym-floor 4-step process…', t0);
+        const gf = await api(sys, pGymFloor(b), 4500);
+        if (gf) { rGymFloor(gf); S.res.gymfloor = gf; saveCampaign(b); }
+        document.getElementById('gymfloorTab').style.display = '';
       }
     }
     markStep(5, 'done');
@@ -1757,6 +1785,90 @@ function pMeta(b){
   const ltvNote = ltv && price ? 'Client LTV: \u00a3'+b.ltv+'. Max CPL based on LTV: \u00a3'+(ltv*0.2).toFixed(0)+' (20% CAC). Max CPL based on front end: \u00a3'+(price*0.3).toFixed(0)+' (30% CAC). Show CPL ranges using both.' : '';
   return 'Meta advertising. Niche: '+b.niche+' | Offer: "'+b.offer+'"'+(b.price?' at \u00a3'+b.price:'')+' | Objective: '+b.obj+' | Month: '+b.month+(ltvNote?' | '+ltvNote:'')+
     '\nReturn: {"coldAd":{"campaignObjective":"","primaryText":"","headline":"","description":"","ctaButton":"","creativeDirection":"","audienceNotes":""},"warmRetarget":{"audience":"","primaryText":"","headline":"","ctaButton":"","budgetNote":""},"leadForm":{"formHeadline":"","introParagraph":"","questions":[],"thankYouMessage":"","followUpAction":""},"budgetFramework":{"dailyBudget":"","flightDates":"","expectedCPL":"","expectedCPLBasedOnLTV":"","expectedConversionRate":"","breakEven":"","ltvNote":""}}';
+}
+
+// TIER 2.4: pGymFloor \u2014 generates niche-specific gym-floor scripts following
+// Nik's 4-step zero-rejection-risk process. Pulls actual lead magnet name and
+// niche-specific language so the scripts are usable verbatim.
+function pGymFloor(b){
+  const lm = S.res && S.res.lead && S.res.lead.leadMagnet;
+  const feo = S.res && S.res.lead && S.res.lead.feo;
+  const lmName = lm ? (lm.name || 'the lead magnet') : 'the lead magnet';
+  const lmFormat = lm ? (lm.format || 'a free resource') : 'a free resource';
+  const feoName = feo ? (feo.name || 'the FEO') : 'the FEO';
+  return 'Gym Floor 4-Step Process \u2014 generate niche-specific scripts for a fitness coach who works on the gym floor.\n' +
+    'Niche: ' + b.niche + ' | Core offer: "' + b.offer + '" | Month: ' + b.month + pathChannelsCtx(b) +
+    '\n\nLead magnet (mention by name when relevant): "' + lmName + '" (' + lmFormat + ')\n' +
+    'FEO (mention by name when relevant): "' + feoName + '"\n' +
+    '\nTHE 4-STEP PROCESS \u2014 this is the founder\'s exact playbook. Generate scripts that follow it precisely:\n' +
+    '\nSTEP 1 \u2014 MEET & GREET\n' +
+    '  Purpose: position yourself in a high-footfall gym area for short blocks (10-20 min). NO asks. NO selling. Just warm, friendly greetings to break the rejection barrier for future conversations.\n' +
+    '  Tone: warm, approachable, soft-skills. Short greetings only. Thumbs up + smile + eye contact.\n' +
+    '\nSTEP 2 \u2014 APPROACH + INTRO\n' +
+    '  Purpose: after 10-20 min of meet/greet, look for someone who RECIPROCATED (thumbs up back, smile back, "morning" back). Approach them, introduce yourself, make them aware. NO ASK at this step. Zero rejection risk.\n' +
+    '  Sample structure: "Hi, my name\'s [Coach]. I\'m a coach here. I\'m supervising this area for the next half hour. If you need any help or have any questions, please come and grab me. Lovely to meet you. What was your name, by the way? \u2014 Cool, nice to meet you [Name]. Have a good workout."\n' +
+    '\nSTEP 3 \u2014 OPEN QUESTION\n' +
+    '  Purpose: stack on Step 2 with ONE open question that everyone in the gym can answer with 100% confidence. The killer question: "How long have you been a member?" \u2014 branches naturally into a conversation.\n' +
+    '  Branch A \u2014 "Just joined": follow-ups like "Have you done your induction yet? How are you finding it?"\n' +
+    '  Branch B \u2014 "Been a member a while": follow-ups like "How\'s the training going? What are you training? I haven\'t seen you here, you must train at different times."\n' +
+    '  Tone: inquisitive, organic, friendly, natural. NEVER scripted-sounding.\n' +
+    '\nSTEP 4 \u2014 LEAD GEN TOOL\n' +
+    '  Purpose: soft introduction of a 90-second questionnaire after Step 3\'s open-question conversation. Captures the lead, gives the coach data to use, leaves with a useful gift / next step.\n' +
+    '  Sample intro: "By the way mate, just in case you\'ve got two minutes, we do some market research for the gym to find out how we can help and improve things for our members. 90 seconds, a few key questions. It\'d be great to get your input."\n' +
+    '  Questionnaire themes: their goal, what they\'re struggling with, what would help most.\n' +
+    '  After answers: offer something useful TODAY (a quick exercise check, a food diary review, a free taster session, or the actual lead magnet \u2014 "' + lmName + '").\n' +
+    '\nReturn this EXACT JSON shape (no extra fields, no markdown fences). Every script field must be niche-specific (e.g. for "busy dads, 35-45" use "mate" / "boss" / dad-friendly references; for "post-natal mums" use warmer, slower openings; for "40+ professionals" use more formal greetings):\n' +
+    '{\n' +
+    '  "philosophy": "1-2 sentence summary of why this process works \u2014 zero rejection risk, trust before ask",\n' +
+    '  "step1_meetGreet": {\n' +
+    '    "purpose": "",\n' +
+    '    "whereToStand": "specific zones in a gym this niche likely trains in",\n' +
+    '    "duration": "",\n' +
+    '    "scripts": ["", "", "", ""],\n' +
+    '    "bodyLanguage": "",\n' +
+    '    "watchFor": "what signals reciprocation"\n' +
+    '  },\n' +
+    '  "step2_approachIntro": {\n' +
+    '    "purpose": "",\n' +
+    '    "triggerSignal": "what to look for before approaching",\n' +
+    '    "fullExample": "full verbatim approach script using language this niche would respond to",\n' +
+    '    "watchFor": "what indicates they\'re engaged enough for step 3"\n' +
+    '  },\n' +
+    '  "step3_openQuestion": {\n' +
+    '    "purpose": "",\n' +
+    '    "primaryQuestion": "How long have you been a member?",\n' +
+    '    "alternativeQuestions": ["", ""],\n' +
+    '    "branchNewMember": {\n' +
+    '      "indicator": "they say something like \\"just joined\\" or \\"a few weeks\\"",\n' +
+    '      "followUps": ["", "", ""],\n' +
+    '      "deepenScript": "natural-sounding script to keep the conversation flowing"\n' +
+    '    },\n' +
+    '    "branchExistingMember": {\n' +
+    '      "indicator": "they say something like \\"a few months\\" or \\"a year\\"",\n' +
+    '      "followUps": ["", "", ""],\n' +
+    '      "deepenScript": ""\n' +
+    '    }\n' +
+    '  },\n' +
+    '  "step4_leadGenTool": {\n' +
+    '    "purpose": "",\n' +
+    '    "introScript": "soft script asking for 90 seconds of their time",\n' +
+    '    "questionnaire": ["", "", "", ""],\n' +
+    '    "responsesToOffer": [\n' +
+    '      {"ifTheySay": "e.g. they want to lose weight but struggle with food", "offerThisHelp": "specific niche-appropriate next step"},\n' +
+    '      {"ifTheySay": "e.g. they want to build strength but don\'t know where to start", "offerThisHelp": ""},\n' +
+    '      {"ifTheySay": "e.g. they\'re short on time", "offerThisHelp": ""}\n' +
+    '    ],\n' +
+    '    "deliveryMethod": "paper questionnaire / iPad form / QR code to mobile form \u2014 pick the best fit for this niche",\n' +
+    '    "followUpDM": "next-day DM script if they shared contact"\n' +
+    '  },\n' +
+    '  "weeklyTargets": {\n' +
+    '    "meetGreetBlocks": "e.g. 3 \u00d7 20-min sessions per week",\n' +
+    '    "approaches": "target number of step-2 introductions per week",\n' +
+    '    "openQuestions": "target number of step-3 conversations per week",\n' +
+    '    "leadCaptures": "target number of step-4 captures per week"\n' +
+    '  },\n' +
+    '  "implementationTips": ["", "", ""]\n' +
+    '}';
 }
 // ── RENDER HELPERS ─────────────────────────────────────────────────────────
 function stdBanner(){return `<div class="standard-banner"><div class="mark">⚡</div><div><div class="title">Generated to The PTMA Standard</div><div class="sub">Hormozi · Jeff Walker · StoryBrand · Sinek · Vaynerchuk · Brunson · Luke Johnson · Simon Booth · FMA · James Smith</div></div></div>`;}
@@ -2148,12 +2260,139 @@ function rMeta(d,b){
   document.getElementById('metaOut').innerHTML=h;
 }
 
+// ── RENDER GYM FLOOR ──────────────────────────────────────────────────────
+// TIER 2.4: Renders Nik's 4-step gym floor process as 4 distinct step cards
+// with the philosophy, scripts, branches, questionnaire, and weekly targets.
+function rGymFloor(d) {
+  if (!d) return;
+  const el = document.getElementById('gymfloorOut');
+  if (!el) return;
+  let h = stdBanner();
+
+  // Top — philosophy + why this works
+  if (d.philosophy) {
+    h += '<div class="card card-cyan"><div class="section-label">The Zero-Rejection-Risk Approach</div><p style="font-size:14px;color:var(--text);line-height:1.6;margin:0">' + d.philosophy + '</p></div>';
+  }
+
+  // Generic 4-step header
+  h += '<div style="display:flex;gap:8px;align-items:center;margin:18px 4px 10px;flex-wrap:wrap">' +
+    ['Meet & Greet', 'Approach + Intro', 'Open Question', 'Lead Gen Tool'].map((name, i) =>
+      '<div style="display:flex;align-items:center;gap:6px"><div style="background:var(--navy);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">' + (i+1) + '</div><span style="font-size:13px;font-weight:600;color:var(--navy)">' + name + '</span></div>' + (i < 3 ? '<span style="color:var(--borderMid);margin:0 4px">→</span>' : '')
+    ).join('') + '</div>';
+
+  // Helper for a step card
+  const stepCard = (num, color, title, body) => {
+    return '<div class="card" style="border-left:4px solid ' + color + '"><div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div style="background:' + color + ';color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:14px;font-weight:700">' + num + '</div><div class="card-title" style="margin:0">' + title + '</div></div>' + body + '</div>';
+  };
+
+  // Step 1 — Meet & Greet
+  if (d.step1_meetGreet) {
+    const s = d.step1_meetGreet;
+    let body = '';
+    if (s.purpose) body += '<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">' + s.purpose + '</p>';
+    const fields = [['Where to position yourself', s.whereToStand], ['Duration', s.duration], ['Body language', s.bodyLanguage], ['Watch for', s.watchFor]];
+    fields.forEach(([k, v]) => { if (v) body += '<div class="kv"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; });
+    if (s.scripts && s.scripts.length) {
+      body += '<div class="section-label" style="margin-top:14px">Sample greeting scripts</div>';
+      s.scripts.filter(Boolean).forEach(sc => { body += '<div class="dm-bubble" style="margin-bottom:6px">' + sc + '</div>'; });
+    }
+    h += stepCard(1, 'var(--cyan)', 'Meet & Greet', body);
+  }
+
+  // Step 2 — Approach + Intro
+  if (d.step2_approachIntro) {
+    const s = d.step2_approachIntro;
+    let body = '';
+    if (s.purpose) body += '<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">' + s.purpose + '</p>';
+    if (s.triggerSignal) body += '<div class="kv"><div class="k">When to approach</div><div class="v">' + s.triggerSignal + '</div></div>';
+    if (s.fullExample) {
+      body += '<div class="section-label" style="margin-top:14px">Full approach script</div>';
+      body += '<div class="dm-bubble">' + s.fullExample + '</div>';
+    }
+    if (s.watchFor) body += '<div class="kv" style="margin-top:10px"><div class="k">Then watch for</div><div class="v">' + s.watchFor + '</div></div>';
+    h += stepCard(2, 'var(--teal)', 'Approach + Intro', body);
+  }
+
+  // Step 3 — Open Question
+  if (d.step3_openQuestion) {
+    const s = d.step3_openQuestion;
+    let body = '';
+    if (s.purpose) body += '<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">' + s.purpose + '</p>';
+    if (s.primaryQuestion) body += '<div style="padding:14px 16px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:10px;margin-bottom:14px;text-align:center;font-size:16px;font-weight:600;color:var(--teal)">"' + s.primaryQuestion + '"</div>';
+    if (s.alternativeQuestions && s.alternativeQuestions.length) {
+      body += '<div class="section-label">Alternative open questions</div>';
+      s.alternativeQuestions.filter(Boolean).forEach(q => { body += '<div class="dm-bubble" style="margin-bottom:6px">' + q + '</div>'; });
+    }
+    if (s.branchNewMember) {
+      const b1 = s.branchNewMember;
+      body += '<div class="section-label" style="margin-top:18px">Branch A — they say "just joined"</div>';
+      if (b1.indicator) body += '<p style="font-size:12px;color:var(--textSub);margin-bottom:8px">Signal: ' + b1.indicator + '</p>';
+      if (b1.followUps?.length) b1.followUps.filter(Boolean).forEach(f => { body += '<div class="dm-bubble" style="margin-bottom:6px">' + f + '</div>'; });
+      if (b1.deepenScript) body += '<div style="padding:10px 14px;background:var(--card2);border-radius:6px;margin-top:8px;font-size:13px;font-style:italic;color:var(--textMid)">' + b1.deepenScript + '</div>';
+    }
+    if (s.branchExistingMember) {
+      const b2 = s.branchExistingMember;
+      body += '<div class="section-label" style="margin-top:18px">Branch B — they say "been a member a while"</div>';
+      if (b2.indicator) body += '<p style="font-size:12px;color:var(--textSub);margin-bottom:8px">Signal: ' + b2.indicator + '</p>';
+      if (b2.followUps?.length) b2.followUps.filter(Boolean).forEach(f => { body += '<div class="dm-bubble" style="margin-bottom:6px">' + f + '</div>'; });
+      if (b2.deepenScript) body += '<div style="padding:10px 14px;background:var(--card2);border-radius:6px;margin-top:8px;font-size:13px;font-style:italic;color:var(--textMid)">' + b2.deepenScript + '</div>';
+    }
+    h += stepCard(3, 'var(--green)', 'Open Question', body);
+  }
+
+  // Step 4 — Lead Gen Tool
+  if (d.step4_leadGenTool) {
+    const s = d.step4_leadGenTool;
+    let body = '';
+    if (s.purpose) body += '<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">' + s.purpose + '</p>';
+    if (s.introScript) {
+      body += '<div class="section-label">Soft intro — asking for 90 seconds</div>';
+      body += '<div class="dm-bubble">' + s.introScript + '</div>';
+    }
+    if (s.questionnaire && s.questionnaire.length) {
+      body += '<div class="section-label" style="margin-top:14px">90-second questionnaire</div>';
+      body += '<ol style="margin:0;padding-left:22px;font-size:13px;color:var(--text);line-height:1.8">' + s.questionnaire.filter(Boolean).map(q => '<li>' + q + '</li>').join('') + '</ol>';
+    }
+    if (s.responsesToOffer && s.responsesToOffer.length) {
+      body += '<div class="section-label" style="margin-top:14px">If they say X → offer Y</div>';
+      s.responsesToOffer.forEach(r => {
+        body += '<div style="padding:12px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-bottom:8px"><p style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:6px">If they say: ' + (r.ifTheySay || '') + '</p><p style="font-size:13px;color:var(--text);margin:0">→ ' + (r.offerThisHelp || '') + '</p></div>';
+      });
+    }
+    if (s.deliveryMethod) body += '<div class="kv" style="margin-top:10px"><div class="k">How to deliver the questionnaire</div><div class="v">' + s.deliveryMethod + '</div></div>';
+    if (s.followUpDM) {
+      body += '<div class="section-label" style="margin-top:14px">Next-day follow-up DM</div>';
+      body += '<div class="dm-bubble">' + s.followUpDM + '</div>';
+    }
+    h += stepCard(4, 'var(--gold)', 'Lead Gen Tool', body);
+  }
+
+  // Weekly targets
+  if (d.weeklyTargets) {
+    const w = d.weeklyTargets;
+    h += '<div class="card card-amber"><div class="section-label">Weekly Targets</div><div class="grid-2">';
+    [['Meet & Greet blocks', w.meetGreetBlocks], ['Approaches (Step 2)', w.approaches], ['Open Questions (Step 3)', w.openQuestions], ['Lead Captures (Step 4)', w.leadCaptures]].forEach(([k, v]) => {
+      if (v) h += '<div class="kv"><div class="k">' + k + '</div><div class="v v-gold">' + v + '</div></div>';
+    });
+    h += '</div></div>';
+  }
+
+  // Implementation tips
+  if (d.implementationTips && d.implementationTips.length) {
+    h += '<div class="card"><div class="section-label">Implementation Tips</div><ul style="margin:0;padding-left:22px;font-size:13px;color:var(--textMid);line-height:1.8">' +
+      d.implementationTips.filter(Boolean).map(t => '<li>' + t + '</li>').join('') +
+      '</ul></div>';
+  }
+
+  el.innerHTML = h;
+}
+
 // ── COPY ENTIRE TAB ────────────────────────────────────────────────────────
 // PATCHED 2026-05-22 (round 3): a single "Copy this tab" floating button.
 // Reads the active results page's plain text and copies to the clipboard.
 // Shown only on results pages (3 = Strategy through 9 = Meta Ads).
-const TAB_TO_OUT = {3:'stratOut', 4:'leadOut', 5:'contentOut', 6:'emailOut', 7:'dmOut', 8:'manychatOut', 9:'metaOut'};
-const TAB_TO_LABEL = {3:'Strategy', 4:'Lead Gen + FEO', 5:'Content Plan', 6:'Email Sequence', 7:'DM Scripts', 8:'ManyChat', 9:'Meta Ads'};
+const TAB_TO_OUT = {3:'stratOut', 4:'leadOut', 5:'contentOut', 6:'emailOut', 7:'dmOut', 8:'manychatOut', 9:'metaOut', 10:'gymfloorOut'};
+const TAB_TO_LABEL = {3:'Strategy', 4:'Lead Gen + FEO', 5:'Content Plan', 6:'Email Sequence', 7:'DM Scripts', 8:'ManyChat', 9:'Meta Ads', 10:'Gym Floor'};
 
 function showToast(msg) {
   let t = document.getElementById('ptmaToast');
@@ -2439,8 +2678,101 @@ const TAB_TO_MD = {
   6: () => mdEmail(S.res.email),
   7: () => mdDM(S.res.dm),
   8: () => mdGenericFromObj('ManyChat Flow', S.res.manychat),
-  9: () => mdGenericFromObj('Meta Ads', S.res.meta)
+  9: () => mdGenericFromObj('Meta Ads', S.res.meta),
+  10: () => mdGymFloor(S.res.gymfloor)
 };
+
+// TIER 2.4: Markdown export for the Gym Floor 4-step tab.
+function mdGymFloor(d) {
+  if (!d) return '';
+  let m = '# Gym Floor — 4-Step Process\n\n';
+  if (d.philosophy) m += '> ' + ss(d.philosophy) + '\n\n';
+  const stepHeader = (n, name) => '## Step ' + n + ' — ' + name + '\n\n';
+
+  if (d.step1_meetGreet) {
+    const s = d.step1_meetGreet;
+    m += stepHeader(1, 'Meet & Greet');
+    if (s.purpose)        m += '_' + ss(s.purpose) + '_\n\n';
+    if (s.whereToStand)   m += '- **Where to position yourself:** ' + ss(s.whereToStand) + '\n';
+    if (s.duration)       m += '- **Duration:** ' + ss(s.duration) + '\n';
+    if (s.bodyLanguage)   m += '- **Body language:** ' + ss(s.bodyLanguage) + '\n';
+    if (s.watchFor)       m += '- **Watch for:** ' + ss(s.watchFor) + '\n';
+    if (s.scripts?.length) {
+      m += '\n**Sample greeting scripts:**\n';
+      s.scripts.filter(Boolean).forEach(sc => { m += '> ' + ss(sc) + '\n\n'; });
+    }
+    m += '\n';
+  }
+  if (d.step2_approachIntro) {
+    const s = d.step2_approachIntro;
+    m += stepHeader(2, 'Approach + Intro');
+    if (s.purpose)        m += '_' + ss(s.purpose) + '_\n\n';
+    if (s.triggerSignal)  m += '- **When to approach:** ' + ss(s.triggerSignal) + '\n';
+    if (s.fullExample)    m += '\n**Full approach script:**\n> ' + ss(s.fullExample).replace(/\n/g, '\n> ') + '\n\n';
+    if (s.watchFor)       m += '- **Then watch for:** ' + ss(s.watchFor) + '\n';
+    m += '\n';
+  }
+  if (d.step3_openQuestion) {
+    const s = d.step3_openQuestion;
+    m += stepHeader(3, 'Open Question');
+    if (s.purpose)         m += '_' + ss(s.purpose) + '_\n\n';
+    if (s.primaryQuestion) m += '**Primary question:** _"' + ss(s.primaryQuestion) + '"_\n\n';
+    if (s.alternativeQuestions?.length) {
+      m += '**Alternative questions:**\n';
+      s.alternativeQuestions.filter(Boolean).forEach(q => m += '- _"' + ss(q) + '"_\n');
+      m += '\n';
+    }
+    if (s.branchNewMember) {
+      m += '### Branch A — "Just joined"\n\n';
+      if (s.branchNewMember.indicator) m += '_Signal: ' + ss(s.branchNewMember.indicator) + '_\n\n';
+      (s.branchNewMember.followUps || []).filter(Boolean).forEach(f => m += '- _"' + ss(f) + '"_\n');
+      if (s.branchNewMember.deepenScript) m += '\n> ' + ss(s.branchNewMember.deepenScript) + '\n';
+      m += '\n';
+    }
+    if (s.branchExistingMember) {
+      m += '### Branch B — "Been a member a while"\n\n';
+      if (s.branchExistingMember.indicator) m += '_Signal: ' + ss(s.branchExistingMember.indicator) + '_\n\n';
+      (s.branchExistingMember.followUps || []).filter(Boolean).forEach(f => m += '- _"' + ss(f) + '"_\n');
+      if (s.branchExistingMember.deepenScript) m += '\n> ' + ss(s.branchExistingMember.deepenScript) + '\n';
+      m += '\n';
+    }
+  }
+  if (d.step4_leadGenTool) {
+    const s = d.step4_leadGenTool;
+    m += stepHeader(4, 'Lead Gen Tool');
+    if (s.purpose)     m += '_' + ss(s.purpose) + '_\n\n';
+    if (s.introScript) m += '**Soft intro:**\n> ' + ss(s.introScript).replace(/\n/g, '\n> ') + '\n\n';
+    if (s.questionnaire?.length) {
+      m += '**90-second questionnaire:**\n';
+      s.questionnaire.filter(Boolean).forEach((q, i) => m += (i+1) + '. ' + ss(q) + '\n');
+      m += '\n';
+    }
+    if (s.responsesToOffer?.length) {
+      m += '**If they say X → offer Y:**\n';
+      s.responsesToOffer.forEach(r => {
+        m += '- **If:** ' + ss(r.ifTheySay) + '\n  **→ Offer:** ' + ss(r.offerThisHelp) + '\n';
+      });
+      m += '\n';
+    }
+    if (s.deliveryMethod) m += '- **Delivery method:** ' + ss(s.deliveryMethod) + '\n';
+    if (s.followUpDM) m += '\n**Next-day follow-up DM:**\n> ' + ss(s.followUpDM).replace(/\n/g, '\n> ') + '\n\n';
+  }
+  if (d.weeklyTargets) {
+    const w = d.weeklyTargets;
+    m += '## Weekly Targets\n\n';
+    if (w.meetGreetBlocks) m += '- **Meet & Greet blocks:** ' + ss(w.meetGreetBlocks) + '\n';
+    if (w.approaches)      m += '- **Approaches (Step 2):** ' + ss(w.approaches) + '\n';
+    if (w.openQuestions)   m += '- **Open Questions (Step 3):** ' + ss(w.openQuestions) + '\n';
+    if (w.leadCaptures)    m += '- **Lead Captures (Step 4):** ' + ss(w.leadCaptures) + '\n';
+    m += '\n';
+  }
+  if (d.implementationTips?.length) {
+    m += '## Implementation Tips\n\n';
+    d.implementationTips.filter(Boolean).forEach(t => m += '- ' + ss(t) + '\n');
+    m += '\n';
+  }
+  return m;
+}
 
 async function copyCurrentTab() {
   const mdFn = TAB_TO_MD[S.tab];
@@ -2475,7 +2807,7 @@ function renderCopyButton() {
     document.body.appendChild(btn);
   }
   // Show only on results tabs
-  btn.style.display = (S.tab >= 3 && S.tab <= 9) ? 'block' : 'none';
+  btn.style.display = (S.tab >= 3 && S.tab <= 10) ? 'block' : 'none';
 }
 
 // TIER 2.2: Per-section "Regenerate this tab" button. Floating, sits left of
@@ -2523,6 +2855,10 @@ async function regenerateCurrentTab() {
       const r = await api(sys, pMeta(b), 3500);
       if (!r) throw new Error('Meta Ads regenerate failed — try again.');
       rMeta(r, b); S.res.meta = r;
+    } else if (tab === 10) {
+      const r = await api(sys, pGymFloor(b), 4500);
+      if (!r) throw new Error('Gym Floor regenerate failed — try again.');
+      rGymFloor(r); S.res.gymfloor = r;
     } else {
       throw new Error('Nothing to regenerate on this tab.');
     }
@@ -2555,8 +2891,8 @@ function renderRegenButton() {
     document.body.appendChild(btn);
   }
   // Show on results tabs only, AND only when that tab has content (S.res.xxx exists)
-  const hasContent = ({3:S.res.strat, 4:S.res.lead, 5:S.res.content, 6:S.res.email, 7:S.res.dm, 8:S.res.manychat, 9:S.res.meta})[S.tab];
-  btn.style.display = (S.tab >= 3 && S.tab <= 9 && hasContent) ? 'block' : 'none';
+  const hasContent = ({3:S.res.strat, 4:S.res.lead, 5:S.res.content, 6:S.res.email, 7:S.res.dm, 8:S.res.manychat, 9:S.res.meta, 10:S.res.gymfloor})[S.tab];
+  btn.style.display = (S.tab >= 3 && S.tab <= 10 && hasContent) ? 'block' : 'none';
 }
 
 // Re-render the floating buttons whenever showTab is called.
@@ -2634,6 +2970,11 @@ function tryRestoreBanner() {
       if (S.res.dm) rDM(S.res.dm);
       if (S.res.manychat) rManyChat(S.res.manychat, b);
       if (S.res.meta) rMeta(S.res.meta, b);
+      // TIER 2.4: gym floor restore
+      if (S.res.gymfloor) {
+        rGymFloor(S.res.gymfloor);
+        const t = document.getElementById('gymfloorTab'); if (t) t.style.display = '';
+      }
       // Mark all step dots as done
       for (let i = 0; i < 6; i++) markStep(i, 'done');
       updateBadges();
