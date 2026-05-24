@@ -661,7 +661,7 @@ select option { background: #fff; }
       <div class="campaign-phase-block" data-phase-idx="1" style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--card2)">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--cyan);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">1</span><strong style="font-size:13px;color:var(--navy)">Campaign 1</strong></div>
         <div class="grid-2">
-          <div class="field"><label>Campaign name</label><input id="f_camp1_name" placeholder="e.g. '7-Day Form Fix Webinar Drive'"></div>
+          <div class="field"><label>Campaign name <span style="color:var(--textSub);font-weight:400;font-size:11px">— leave blank if you don't know yet (we'll suggest options)</span></label><input id="f_camp1_name" placeholder="e.g. '7-Day Form Fix Webinar' or leave blank"></div>
           <div class="field"><label>Campaign type</label><select id="f_camp1_type">
             <option value="leadMagnet" selected>Lead Magnet drive</option>
             <option value="feo">FEO drive</option>
@@ -671,12 +671,31 @@ select option { background: #fff; }
           <div class="field"><label>Campaign start date</label><input id="f_camp1_start" type="date"></div>
           <div class="field"><label>Launch / end date</label><input id="f_camp1_end" type="date"></div>
         </div>
+        <details style="margin-top:12px"><summary style="cursor:pointer;font-size:12px;color:var(--teal);font-weight:600;padding:6px 0;user-select:none">⚙️ Sales path + conversion rates for THIS campaign (override global)</summary><div style="padding:12px;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:8px">
+          <div class="field"><label>Sales path for this campaign</label><select id="f_camp1_salesPath" onchange="updateCampSalesLabels(1)">
+            <option value="">— Use global (from main Brief) —</option>
+            <option value="calls">Sales calls / consultations</option>
+            <option value="direct">Direct landing page purchase</option>
+            <option value="application">Application form</option>
+            <option value="gymfloor">Gym floor only</option>
+            <option value="email">Email / DM sequence</option>
+            <option value="mixed">Mixed / other</option>
+          </select></div>
+          <div class="grid-2" style="margin-top:8px">
+            <div class="field"><label id="lbl_camp1_conv1">Conversion rate 1 (%)</label><input id="f_camp1_conv1" type="number" min="0" max="100" placeholder="optional"></div>
+            <div class="field"><label id="lbl_camp1_conv2">Conversion rate 2 (%)</label><input id="f_camp1_conv2" type="number" min="0" max="100" placeholder="optional"></div>
+          </div>
+          <div class="field" style="margin-top:8px"><label>Emails in THIS campaign's nurture sequence</label><select id="f_camp1_emailCount">
+            <option value="">— Use global (from Email Options) —</option>
+            <option value="3">3 emails</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+          </select></div>
+        </div></details>
       </div>
       <!-- Campaign 2 -->
       <div class="campaign-phase-block" data-phase-idx="2" style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--card2);display:none">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--gold);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">2</span><strong style="font-size:13px;color:var(--navy)">Campaign 2 — picks up after Campaign 1</strong></div>
         <div class="grid-2">
-          <div class="field"><label>Campaign name</label><input id="f_camp2_name" placeholder="e.g. 'FEO Retarget — Accelerator'"></div>
+          <div class="field"><label>Campaign name <span style="color:var(--textSub);font-weight:400;font-size:11px">— blank = AI suggests</span></label><input id="f_camp2_name" placeholder="e.g. 'Accelerator FEO' or leave blank"></div>
           <div class="field"><label>Campaign type</label><select id="f_camp2_type">
             <option value="leadMagnet">Lead Magnet drive</option>
             <option value="feo" selected>FEO drive</option>
@@ -686,12 +705,31 @@ select option { background: #fff; }
           <div class="field"><label>Campaign start date</label><input id="f_camp2_start" type="date"></div>
           <div class="field"><label>Launch / end date</label><input id="f_camp2_end" type="date"></div>
         </div>
+        <details style="margin-top:12px"><summary style="cursor:pointer;font-size:12px;color:var(--teal);font-weight:600;padding:6px 0;user-select:none">⚙️ Sales path + conversion rates for THIS campaign (override global)</summary><div style="padding:12px;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:8px">
+          <div class="field"><label>Sales path for this campaign</label><select id="f_camp2_salesPath" onchange="updateCampSalesLabels(2)">
+            <option value="">— Use global —</option>
+            <option value="calls">Sales calls / consultations</option>
+            <option value="direct">Direct landing page purchase</option>
+            <option value="application">Application form</option>
+            <option value="gymfloor">Gym floor only</option>
+            <option value="email">Email / DM sequence</option>
+            <option value="mixed">Mixed / other</option>
+          </select></div>
+          <div class="grid-2" style="margin-top:8px">
+            <div class="field"><label id="lbl_camp2_conv1">Conversion rate 1 (%)</label><input id="f_camp2_conv1" type="number" min="0" max="100" placeholder="optional"></div>
+            <div class="field"><label id="lbl_camp2_conv2">Conversion rate 2 (%)</label><input id="f_camp2_conv2" type="number" min="0" max="100" placeholder="optional"></div>
+          </div>
+          <div class="field" style="margin-top:8px"><label>Emails in THIS campaign's nurture sequence</label><select id="f_camp2_emailCount">
+            <option value="">— Use global —</option>
+            <option value="3">3 emails</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+          </select></div>
+        </div></details>
       </div>
       <!-- Campaign 3 -->
       <div class="campaign-phase-block" data-phase-idx="3" style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:0;background:var(--card2);display:none">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--amber);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">3</span><strong style="font-size:13px;color:var(--navy)">Campaign 3 — picks up after Campaign 2</strong></div>
         <div class="grid-2">
-          <div class="field"><label>Campaign name</label><input id="f_camp3_name" placeholder="e.g. 'Core Offer Launch — Elevate'"></div>
+          <div class="field"><label>Campaign name <span style="color:var(--textSub);font-weight:400;font-size:11px">— blank = AI suggests</span></label><input id="f_camp3_name" placeholder="e.g. 'Elevate Core Launch' or leave blank"></div>
           <div class="field"><label>Campaign type</label><select id="f_camp3_type">
             <option value="leadMagnet">Lead Magnet drive</option>
             <option value="feo">FEO drive</option>
@@ -701,6 +739,25 @@ select option { background: #fff; }
           <div class="field"><label>Campaign start date</label><input id="f_camp3_start" type="date"></div>
           <div class="field"><label>Launch / end date</label><input id="f_camp3_end" type="date"></div>
         </div>
+        <details style="margin-top:12px"><summary style="cursor:pointer;font-size:12px;color:var(--teal);font-weight:600;padding:6px 0;user-select:none">⚙️ Sales path + conversion rates for THIS campaign (override global)</summary><div style="padding:12px;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:8px">
+          <div class="field"><label>Sales path for this campaign</label><select id="f_camp3_salesPath" onchange="updateCampSalesLabels(3)">
+            <option value="">— Use global —</option>
+            <option value="calls">Sales calls / consultations</option>
+            <option value="direct">Direct landing page purchase</option>
+            <option value="application">Application form</option>
+            <option value="gymfloor">Gym floor only</option>
+            <option value="email">Email / DM sequence</option>
+            <option value="mixed">Mixed / other</option>
+          </select></div>
+          <div class="grid-2" style="margin-top:8px">
+            <div class="field"><label id="lbl_camp3_conv1">Conversion rate 1 (%)</label><input id="f_camp3_conv1" type="number" min="0" max="100" placeholder="optional"></div>
+            <div class="field"><label id="lbl_camp3_conv2">Conversion rate 2 (%)</label><input id="f_camp3_conv2" type="number" min="0" max="100" placeholder="optional"></div>
+          </div>
+          <div class="field" style="margin-top:8px"><label>Emails in THIS campaign's nurture sequence</label><select id="f_camp3_emailCount">
+            <option value="">— Use global —</option>
+            <option value="3">3 emails</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+          </select></div>
+        </div></details>
       </div>
       <div style="margin-top:10px;font-size:11px;color:var(--textSub);font-style:italic">Each campaign auto-divides into Jeff Walker phases — S1 awareness → S2 build → S3 warm-up → S4 LAUNCH. The Calendar tab shows the day-by-day plan across every campaign you set.</div>
     </div>
@@ -1024,11 +1081,16 @@ function bf() {
       const count = parseInt(document.getElementById('f_campaignCount')?.value || '1');
       const arr = [];
       for (let i = 1; i <= count; i++) {
-        const name  = document.getElementById('f_camp' + i + '_name')?.value || '';
-        const type  = document.getElementById('f_camp' + i + '_type')?.value || 'custom';
-        const start = document.getElementById('f_camp' + i + '_start')?.value || '';
-        const end   = document.getElementById('f_camp' + i + '_end')?.value || '';
-        if (name || start || end) arr.push({ name, type, start, end });
+        const name       = document.getElementById('f_camp' + i + '_name')?.value || '';
+        const type       = document.getElementById('f_camp' + i + '_type')?.value || 'custom';
+        const start      = document.getElementById('f_camp' + i + '_start')?.value || '';
+        const end        = document.getElementById('f_camp' + i + '_end')?.value || '';
+        const salesPath  = document.getElementById('f_camp' + i + '_salesPath')?.value || '';
+        const conv1      = document.getElementById('f_camp' + i + '_conv1')?.value || '';
+        const conv2      = document.getElementById('f_camp' + i + '_conv2')?.value || '';
+        const emailCount = document.getElementById('f_camp' + i + '_emailCount')?.value || '';
+        // Always include up to `count`, even if blank, so prompts know slot exists
+        arr.push({ name, type, start, end, salesPath, conv1, conv2, emailCount });
       }
       return arr;
     })(),
@@ -1350,15 +1412,20 @@ function restoreFormDraft() {
     setChk2('f_meta_core',       b.metaCampaigns.coreOffer);
     setChk2('f_meta_engagement', b.metaCampaigns.engagement);
   }
-  // TIER 2.6a: campaign phases
+  // TIER 2.6a + 2.6d: campaign phases + per-campaign overrides
   if (b.campaignCount) setVal('f_campaignCount', String(b.campaignCount));
   if (Array.isArray(b.campaigns)) {
     b.campaigns.forEach((c, i) => {
       const n = i + 1;
-      setVal('f_camp' + n + '_name',  c.name);
-      setVal('f_camp' + n + '_type',  c.type);
-      setVal('f_camp' + n + '_start', c.start);
-      setVal('f_camp' + n + '_end',   c.end);
+      setVal('f_camp' + n + '_name',       c.name);
+      setVal('f_camp' + n + '_type',       c.type);
+      setVal('f_camp' + n + '_start',      c.start);
+      setVal('f_camp' + n + '_end',        c.end);
+      setVal('f_camp' + n + '_salesPath',  c.salesPath);
+      setVal('f_camp' + n + '_conv1',      c.conv1);
+      setVal('f_camp' + n + '_conv2',      c.conv2);
+      setVal('f_camp' + n + '_emailCount', c.emailCount);
+      if (typeof updateCampSalesLabels === 'function') updateCampSalesLabels(n);
     });
   }
   if (typeof updateCampaignPhasesUI === 'function') updateCampaignPhasesUI();
@@ -1374,7 +1441,7 @@ function restoreFormDraft() {
   if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
 }
 function wireFormAutoSave() {
-  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose','f_meta_lm','f_meta_feo','f_meta_core','f_meta_engagement','f_campaignCount','f_camp1_name','f_camp1_type','f_camp1_start','f_camp1_end','f_camp2_name','f_camp2_type','f_camp2_start','f_camp2_end','f_camp3_name','f_camp3_type','f_camp3_start','f_camp3_end'];
+  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose','f_meta_lm','f_meta_feo','f_meta_core','f_meta_engagement','f_campaignCount','f_camp1_name','f_camp1_type','f_camp1_start','f_camp1_end','f_camp1_salesPath','f_camp1_conv1','f_camp1_conv2','f_camp1_emailCount','f_camp2_name','f_camp2_type','f_camp2_start','f_camp2_end','f_camp2_salesPath','f_camp2_conv1','f_camp2_conv2','f_camp2_emailCount','f_camp3_name','f_camp3_type','f_camp3_start','f_camp3_end','f_camp3_salesPath','f_camp3_conv1','f_camp3_conv2','f_camp3_emailCount'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1473,6 +1540,22 @@ function deriveSubPhases(start, end) {
     cursor.setDate(cursor.getDate() + 1);
   });
   return phases;
+}
+
+// TIER 2.6d: per-campaign sales-path conversion-rate labels (mirrors global updateFunnelLabels).
+function updateCampSalesLabels(i) {
+  const sel = document.getElementById('f_camp' + i + '_salesPath');
+  if (!sel) return;
+  const path = sel.value || 'calls';
+  const cfg = (typeof FUNNEL_LABELS !== 'undefined' ? FUNNEL_LABELS[path] : null) || { c1: 'Conversion rate 1 (%)', c2: 'Conversion rate 2 (%)', ph1: '', ph2: '' };
+  const l1 = document.getElementById('lbl_camp' + i + '_conv1');
+  const l2 = document.getElementById('lbl_camp' + i + '_conv2');
+  const i1 = document.getElementById('f_camp' + i + '_conv1');
+  const i2 = document.getElementById('f_camp' + i + '_conv2');
+  if (l1) l1.textContent = path ? cfg.c1 : 'Conversion rate 1 (%)';
+  if (l2) l2.textContent = path ? cfg.c2 : 'Conversion rate 2 (%)';
+  if (i1) i1.placeholder = path ? cfg.ph1 : 'optional';
+  if (i2) i2.placeholder = path ? cfg.ph2 : 'optional';
 }
 
 // TIER 2.6a: Show/hide campaign phase blocks based on the count dropdown.
@@ -1581,21 +1664,44 @@ function clearCampaign() {
   try { localStorage.removeItem(SAVE_KEY); } catch {}
 }
 
-// TIER 2.3: Generate email sequence in batches of 3 (or fewer for the last batch).
-// Each batch ~3500 tokens. Handles any count from 3 to 10.
+// TIER 2.3 + 2.6d: Generate email sequences. When chained campaigns are set,
+// generate ONE sequence PER campaign — each with its own count (per-campaign override
+// or global default). Each batch ~3500 tokens. Handles any count from 3 to 10.
 async function generateEmailBatches(b, sys) {
-  const count = parseInt(b.emailCount) || 6;
-  const batches = [];
-  for (let start = 1; start <= count; start += 3) {
-    const end = Math.min(start + 2, count);
-    batches.push({ start, end });
-  }
+  const campaigns = Array.isArray(b.campaigns) ? b.campaigns.filter(c => c) : [];
+  const globalCount = parseInt(b.emailCount) || 6;
+
+  // Build campaign-scoped sequence specs. If no chain, fall back to a single global sequence.
+  const sequencePlans = campaigns.length
+    ? campaigns.map((c, i) => ({
+        campaignIndex: i + 1,
+        campaignName: c.name || ('Campaign ' + (i + 1)),
+        campaignType: c.type || 'custom',
+        count: parseInt(c.emailCount) || globalCount
+      }))
+    : [{ campaignIndex: 0, campaignName: '', campaignType: '', count: globalCount }];
+
   let merged = null;
-  for (const batch of batches) {
-    const tokensNeeded = Math.max(3000, (batch.end - batch.start + 1) * 1100 + 600);
-    const res = await api(sys, pEmail(b, batch), tokensNeeded);
-    if (!res) continue;
-    merged = mergeEmail(merged, res);
+  for (const plan of sequencePlans) {
+    const batches = [];
+    for (let start = 1; start <= plan.count; start += 3) {
+      const end = Math.min(start + 2, plan.count);
+      batches.push({ start, end, campaignIndex: plan.campaignIndex, campaignName: plan.campaignName, campaignType: plan.campaignType, perCampaignCount: plan.count });
+    }
+    for (const batch of batches) {
+      const tokensNeeded = Math.max(3000, (batch.end - batch.start + 1) * 1100 + 600);
+      const res = await api(sys, pEmail(b, batch), tokensNeeded);
+      if (!res) continue;
+      // Tag every email with the campaign index for the renderer to group on
+      if (res.sequence) {
+        res.sequence.forEach(em => {
+          if (plan.campaignIndex) em.campaignIndex = plan.campaignIndex;
+          if (plan.campaignName && !em.forCampaign) em.forCampaign = plan.campaignName;
+          if (plan.campaignType && !em.campaignType) em.campaignType = plan.campaignType;
+        });
+      }
+      merged = mergeEmail(merged, res);
+    }
   }
   return merged;
 }
@@ -1641,7 +1747,7 @@ async function generate() {
 
     // ── Step 1: Lead Gen + FEO ──
     markStep(1, 'active'); setLoadingSub('Designing your lead magnet and front-end offer…');
-    const lg = await api(sys,pLead(b),7000);
+    const lg = await api(sys,pLead(b),8500);
     rLead(lg); S.res.lead=lg; saveCampaign(b);
     markStep(1, 'done');
 
@@ -1755,7 +1861,20 @@ function pLead(b){
   const price = parseInt(b.price) || 0;
   const ch = b.channels || {};
   const gymOnly = b.salesPath === 'gymfloor' || (ch.gymfloor && !ch.landing && !ch.social && !ch.email && !ch.paid);
+  // TIER 2.6d: pull through campaign names. Find the LM-type campaign and the FEO-type campaign.
+  const camps = Array.isArray(b.campaigns) ? b.campaigns : [];
+  const lmCamp  = camps.find(c => c && c.type === 'leadMagnet');
+  const feoCamp = camps.find(c => c && c.type === 'feo');
+  const lmHintedName  = (lmCamp  && lmCamp.name)  ? lmCamp.name  : '';
+  const feoHintedName = (feoCamp && feoCamp.name) ? feoCamp.name : '';
+  const lmCampLabel  = lmCamp  ? '"' + (lmCamp.name  || '(Coach left this blank — generate 3 strong NAME options)')  + '"' : '(no LM-type campaign on the chain)';
+  const feoCampLabel = feoCamp ? '"' + (feoCamp.name || '(Coach left this blank — generate 3 strong NAME options)') + '"' : '(no FEO-type campaign on the chain)';
   return 'Lead gen + Front-End Offer (FEO). Niche: ' + b.niche + ' | Core offer: "' + b.offer + '"' + (price ? ' at £' + price : '') + ' | Objective: ' + b.obj + ' | Month: ' + b.month + ' | Delivery: ' + (b.f2f?'F2F+Online':'Online only') + pathChannelsCtx(b) +
+'\n\nCAMPAIGN-CHAIN CONTEXT (TIER 2.6d):\n' +
+'   • Campaign 1 (Lead Magnet drive) name from Brief: ' + lmCampLabel + '\n' +
+'   • Campaign 2 (FEO drive) name from Brief: ' + feoCampLabel + '\n' +
+'   ⚠️ If the coach typed a name, USE IT VERBATIM as the chosen "name" field for that offer. If blank, generate a name. EITHER WAY, also generate 3 alternative name options (different angles).\n' +
+'   ⚠️ Also generate 3 FORMAT options and 3 LENGTH options for each offer so the coach can pick or swap.\n' +
 '\n\nCRITICAL RULES — apply both:\n' +
 '\n1) LEAD MAGNET (attention offer). Pick the BEST-FIT format for this coach\'s niche, sales path, and channels. DO NOT default to "PDF guide" unless a PDF is genuinely the strongest format for this specific niche + channels.\n' +
 'Format buffet — pick one that fits, name it concretely (not "a guide"):\n' +
@@ -1800,8 +1919,8 @@ function pLead(b){
 '   • socialProofLine: 1-2 sentences pointing to results or numbers — keep it credible (e.g. "Over 200 dads in this same situation have used this in the last 12 months")\n' +
 '   • objectionHandle: 1 sentence answering the biggest objection upfront (e.g. "Already tried diets? This one\'s different because…")\n' +
 '\n⚠️ DO NOT return empty strings inside landingPage. Every field must have real, niche-specific copy. If the response would risk running out of tokens, prioritise filling landingPage over expanding other fields.\n' +
-'\nReturn this EXACT JSON shape (no extra fields, no markdown fences, every landingPage field POPULATED):\n' +
-'{"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"reactivationOption":{"trigger":"","offer":"","message":""}}';
+'\nReturn this EXACT JSON shape (no extra fields, no markdown fences, every landingPage field POPULATED, nameOptions/formatOptions/lengthOptions arrays each populated with 3 distinct items):\n' +
+'{"leadMagnet":{"name":"","nameOptions":["","",""],"format":"","formatOptions":["","",""],"lengthOptions":["","",""],"pain":"","outcome":"","bridge":"","hook":"","valueCheck":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""},"forCampaign":"' + (lmHintedName||'(Lead Magnet drive)') + '"},"feo":{"name":"","nameOptions":["","",""],"format":"","formatOptions":["","",""],"lengthOptions":["","",""],"price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""},"forCampaign":"' + (feoHintedName||'(FEO drive)') + '"},"reactivationOption":{"trigger":"","offer":"","message":""}}';
 }
 
 // TIER 2.6b: Content Plan rebuilt — date-anchored posts with paste-ready captions,
@@ -1859,13 +1978,23 @@ function pContent(b, weeks) {
     '{"contentRatio":"80/20 split — explain in 1 sentence for this niche","weeklyPlan":[{"week":' + startW + ',"theme":"","posts":[{"date":"","daysOut":0,"phaseCode":"S1","campaignIndex":1,"platform":"","format":"","pillar":"","angle":"","hook":"","scene":"","caption":"","cta":"","visualDirection":"","documentPrompt":"","whyItWorks":""}]}],"gymFloorContent":[]}';
 }
 
-// TIER 2.3: pEmail rewritten to support 3-10 emails, day-zero choice, and optional tone samples.
+// TIER 2.3 + 2.6d: pEmail supports per-campaign sequences.
+// batchSpec: { start, end, campaignIndex, campaignName, campaignType, perCampaignCount }
+// If batchSpec.campaignIndex is set, this batch is for a SPECIFIC campaign in the chain.
 function pEmail(b, batchSpec) {
-  // batchSpec: { start: 1, end: N } — generates emails in that range
-  const count   = b.emailCount || 6;
+  const perCampCount = batchSpec.perCampaignCount;
+  const count   = perCampCount || b.emailCount || 6;
   const dayZero = b.emailDayZero !== false;
   const samples = (b.emailSamples || '').trim();
   const start = batchSpec.start, end = batchSpec.end;
+  const campLabel = batchSpec.campaignName ? ' for Campaign "' + batchSpec.campaignName + '" (' + (batchSpec.campaignType || 'campaign') + ')' : '';
+  // Different campaign types call for different nurture arcs
+  const typeArc = ({
+    leadMagnet: 'This sequence nurtures someone who JUST opted in for the lead magnet. Arc: deliver value → teach → build trust → bridge to FEO.',
+    feo:        'This sequence is for warm leads who consumed the lead magnet. Arc: build authority → handle objections → present FEO → urgency close.',
+    core:       'This sequence is for hot leads who bought the FEO. Arc: success-build → results case studies → core offer pitch → application close.',
+    custom:     'Custom nurture sequence — tailor to the niche.'
+  })[batchSpec.campaignType] || '';
 
   // Default sequence template (varies with count). Always finishes with FEO invite.
   const sequenceArc = (count <= 3) ?
@@ -1884,13 +2013,14 @@ function pEmail(b, batchSpec) {
     ? '\n\nTONE SAMPLE — match this voice exactly. Mirror sentence length, vocabulary, openers, line breaks. DO NOT copy the actual content, just the tone:\n"""\n' + samples.slice(0, 1500) + '\n"""\n'
     : '';
 
-  return 'Email nurture sequence for a fitness coach. ' +
+  return 'Email nurture sequence for a fitness coach' + campLabel + '. ' +
     'Generate ONLY emails ' + start + ' through ' + end + ' (inclusive) — ' + (end - start + 1) + ' email' + (end - start ? 's' : '') + '. ' +
     'Total sequence is ' + count + ' emails. Arc: ' + sequenceArc + ' ' + dayZeroNote +
+    (typeArc ? '\n\nCAMPAIGN-TYPE ARC (TIER 2.6d): ' + typeArc : '') +
     '\nNiche: ' + b.niche + ' | Core offer: "' + b.offer + '"' + (b.price ? ' at £' + b.price : '') + ' | Month: ' + b.month +
     pathChannelsCtx(b) + sampleBlock +
-    '\n\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
-    '{"sequence":[{"emailNum":' + start + ',"timing":"","purpose":"","subjectLine":"","hook":"","bodyOutline":[],"cta":"","jab_or_hook":"jab"}]}';
+    '\n\nReturn this EXACT JSON shape (no extra fields, no markdown fences). Include "forCampaign" with the campaign name and "campaignType" with the type:\n' +
+    '{"sequence":[{"emailNum":' + start + ',"timing":"","purpose":"","subjectLine":"","hook":"","bodyOutline":[],"cta":"","jab_or_hook":"jab","forCampaign":"' + (batchSpec.campaignName || '') + '","campaignType":"' + (batchSpec.campaignType || '') + '"}]}';
 }
 
 // TIER 1: DM Scripts rebuilt around real-world scenarios — not cold spray.
@@ -2382,16 +2512,34 @@ function rLead(d){
     </details>`;
   };
 
+  // TIER 2.6d: render the 3 alternative options (name / format / length) below the primary
+  const renderOptions = (offer, label) => {
+    const names   = (offer.nameOptions   || []).filter(x => x && x !== offer.name);
+    const formats = (offer.formatOptions || []).filter(x => x && x !== offer.format);
+    const lengths = (offer.lengthOptions || []).filter(Boolean);
+    if (!names.length && !formats.length && !lengths.length) return '';
+    let html = '<details style="margin-top:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">' +
+      '<summary style="cursor:pointer;padding:10px 14px;background:var(--card2);font-size:12px;font-weight:600;color:var(--navy);user-select:none">🔀 Other ' + label + ' options to consider</summary>' +
+      '<div style="padding:14px 16px;background:#fff">';
+    if (names.length)   html += '<div class="kv"><div class="k">Alternative names</div><div class="v">' + names.map(n => '<span style="display:inline-block;padding:3px 9px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:999px;font-size:11px;color:var(--teal);margin:2px 4px 2px 0">' + n + '</span>').join('') + '</div></div>';
+    if (formats.length) html += '<div class="kv"><div class="k">Alternative formats</div><div class="v">' + formats.map(f => '<span style="display:inline-block;padding:3px 9px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:999px;font-size:11px;color:var(--gold);margin:2px 4px 2px 0">' + f + '</span>').join('') + '</div></div>';
+    if (lengths.length) html += '<div class="kv"><div class="k">Length options</div><div class="v">' + lengths.map(l => '<span style="display:inline-block;padding:3px 9px;background:var(--card2);border:1px solid var(--border);border-radius:999px;font-size:11px;color:var(--textMid);margin:2px 4px 2px 0">' + l + '</span>').join('') + '</div></div>';
+    html += '<div style="font-size:11px;color:var(--textSub);margin-top:8px;font-style:italic">To use one of these alternatives, type it into the matching Campaign name on the Brief and hit ↻ Regenerate tab.</div></div></details>';
+    return html;
+  };
+
   if(d.leadMagnet){
     const lm=d.leadMagnet;
     const isPass=(lm.valueCheck||'').toLowerCase().startsWith('yes');
     const whyBlock = lm.whyThisFormat ? `<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--teal)"><strong>Why this format:</strong> ${lm.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — ${tip('Lead Magnet')}</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)', 'the lead magnet')}</div>`;
+    const forCampLabel = lm.forCampaign ? `<div style="font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:var(--textSub);font-weight:700;margin-bottom:6px">For Campaign 1 · ${lm.forCampaign}</div>` : '';
+    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — ${tip('Lead Magnet')}</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div>${forCampLabel}<div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderOptions(lm, 'lead magnet')}${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)', 'the lead magnet')}</div>`;
   }
   if(d.feo){
     const feo=d.feo;
     const whyBlock = feo.whyThisFormat ? `<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--gold)"><strong>Why this format:</strong> ${feo.whyThisFormat}</div>` : '';
-    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — ${tip('FEO')}</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div><div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)', 'the FEO')}</div>`;
+    const forCampLabel = feo.forCampaign ? `<div style="font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:var(--textSub);font-weight:700;margin-bottom:6px">For Campaign 2 · ${feo.forCampaign}</div>` : '';
+    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — ${tip('FEO')}</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div>${forCampLabel}<div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderOptions(feo, 'FEO')}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)', 'the FEO')}</div>`;
   }
   if(d.reactivationOption){
     const r=d.reactivationOption;
@@ -2486,15 +2634,44 @@ function rContent(d){
 }
 
 // ── RENDER EMAIL ───────────────────────────────────────────────────────────
+// TIER 2.6d: Email renderer groups by campaign when chained.
 function rEmail(d){
   if(!d) return;
-  let h=stdBanner();
-  (d.sequence||[]).forEach(em=>{
-    const isAsk=em.jab_or_hook==='right hook';
-    const ct=`Subject: ${em.subjectLine}\n\n${em.hook}\n\n${(em.bodyOutline||[]).join('\n')}`;
-    h+=`<div class="email-card ${isAsk?'ask':''}"><div class="output-row"><span class="badge ${isAsk?'badge-gold':'badge-green'}">${isAsk?'Right hook — ask':'Jab — value'}</span><span style="font-size:11px;color:var(--textSub)">${em.timing}</span>${cp('em'+em.emailNum,ct)}</div><div class="email-subject">${em.subjectLine}</div><div class="email-meta">${em.purpose}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:10px">"${em.hook}"</p>${(em.bodyOutline||[]).map(b=>`<p style="font-size:12px;margin-bottom:5px">· ${b}</p>`).join('')}<p style="font-size:13px;margin-top:10px"><span style="font-weight:600;color:var(--teal)">CTA: </span>${em.cta}</p></div>`;
+  let h = stdBanner();
+  const all = d.sequence || [];
+
+  // Group emails by campaignIndex. If no campaignIndex set on any → single group.
+  const groups = {};
+  all.forEach(em => {
+    const key = em.campaignIndex || em.forCampaign || '__single__';
+    if (!groups[key]) groups[key] = { campaignIndex: em.campaignIndex, campaignName: em.forCampaign || '', campaignType: em.campaignType || '', emails: [] };
+    groups[key].emails.push(em);
   });
-  document.getElementById('emailOut').innerHTML=h;
+  const keys = Object.keys(groups).sort((a, b) => {
+    const ai = groups[a].campaignIndex || 999, bi = groups[b].campaignIndex || 999;
+    return ai - bi;
+  });
+  const stageColor = { leadMagnet: 'var(--cyan)', feo: 'var(--gold)', core: 'var(--amber)', custom: 'var(--navy)' };
+  const stageLabel = { leadMagnet: 'Lead Magnet nurture', feo: 'FEO nurture (warm)', core: 'Core Offer nurture (hot)', custom: 'Custom nurture' };
+
+  keys.forEach((key, gi) => {
+    const g = groups[key];
+    // Group header (skip if only one group AND no campaign info)
+    if (keys.length > 1 || g.campaignIndex) {
+      const col = stageColor[g.campaignType] || 'var(--navy)';
+      const lbl = stageLabel[g.campaignType] || 'Sequence';
+      h += '<div style="margin:' + (gi === 0 ? '0' : '24px') + ' 0 14px;padding:12px 16px;background:#fff;border-left:4px solid ' + col + ';border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.04)">' +
+        '<div style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:' + col + ';font-weight:700;margin-bottom:4px">' + (g.campaignIndex ? 'Campaign ' + g.campaignIndex + ' · ' : '') + lbl + '</div>' +
+        '<div style="font-size:14px;font-weight:600;color:var(--navy)">' + (g.campaignName || 'Sequence') + ' · ' + g.emails.length + ' email' + (g.emails.length === 1 ? '' : 's') + '</div>' +
+        '</div>';
+    }
+    g.emails.forEach((em, ei) => {
+      const isAsk = em.jab_or_hook === 'right hook';
+      const ct = `Subject: ${em.subjectLine}\n\n${em.hook}\n\n${(em.bodyOutline||[]).join('\n')}`;
+      h += `<div class="email-card ${isAsk?'ask':''}"><div class="output-row"><span class="badge ${isAsk?'badge-gold':'badge-green'}">${isAsk?'Right hook — ask':'Jab — value'}</span><span style="font-size:11px;color:var(--textSub)">${em.timing||''}</span>${cp('em_g'+(g.campaignIndex||'0')+'_'+ei,ct)}</div><div class="email-subject">${em.subjectLine||''}</div><div class="email-meta">${em.purpose||''}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:10px">"${em.hook||''}"</p>${(em.bodyOutline||[]).map(b=>`<p style="font-size:12px;margin-bottom:5px">· ${b}</p>`).join('')}<p style="font-size:13px;margin-top:10px"><span style="font-weight:600;color:var(--teal)">CTA: </span>${em.cta||''}</p></div>`;
+    });
+  });
+  document.getElementById('emailOut').innerHTML = h;
 }
 
 // ── RENDER DM ──────────────────────────────────────────────────────────────
@@ -3919,15 +4096,20 @@ function tryRestoreBanner() {
         setChk('f_meta_core',       b.metaCampaigns.coreOffer);
         setChk('f_meta_engagement', b.metaCampaigns.engagement);
       }
-      // Tier 2.6a — campaign phases
+      // Tier 2.6a + 2.6d — campaign phases + per-campaign overrides
       if (b.campaignCount) setVal('f_campaignCount', String(b.campaignCount));
       if (Array.isArray(b.campaigns)) {
         b.campaigns.forEach((c, i) => {
           const n = i + 1;
-          setVal('f_camp' + n + '_name',  c.name);
-          setVal('f_camp' + n + '_type',  c.type);
-          setVal('f_camp' + n + '_start', c.start);
-          setVal('f_camp' + n + '_end',   c.end);
+          setVal('f_camp' + n + '_name',       c.name);
+          setVal('f_camp' + n + '_type',       c.type);
+          setVal('f_camp' + n + '_start',      c.start);
+          setVal('f_camp' + n + '_end',        c.end);
+          setVal('f_camp' + n + '_salesPath',  c.salesPath);
+          setVal('f_camp' + n + '_conv1',      c.conv1);
+          setVal('f_camp' + n + '_conv2',      c.conv2);
+          setVal('f_camp' + n + '_emailCount', c.emailCount);
+          if (typeof updateCampSalesLabels === 'function') updateCampSalesLabels(n);
         });
       }
       if (typeof updateCampaignPhasesUI === 'function') updateCampaignPhasesUI();
