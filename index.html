@@ -456,6 +456,7 @@ select option { background: #fff; }
   <button class="tab" id="manychatTab" style="display:none" onclick="showTab(8)">⑨ ManyChat</button>
   <button class="tab" id="metaTab" style="display:none" onclick="showTab(9)">⑩ Meta Ads</button>
   <button class="tab" id="gymfloorTab" style="display:none" onclick="showTab(10)">⑪ Gym Floor</button>
+  <button class="tab" id="calendarTab" onclick="showTab(11)">⑫ Calendar</button>
 </div>
 
 <div class="body">
@@ -640,6 +641,71 @@ select option { background: #fff; }
     </div>
   </div>
 
+  <!-- TIER 2.6a: Campaign Phases — 1-3 chained campaigns (LM → FEO → Core).
+       Each campaign auto-divides into S1 (awareness) → S2 (build) → S3 (warm-up) → S4 (launch). -->
+  <div class="card">
+    <div class="card-eyebrow">Campaign Phases · OPTIONAL</div>
+    <div class="card-title">Are you running a chained campaign?</div>
+    <div class="card-sub" style="margin-bottom:14px">Most campaigns are one drive (just leave this on "1"). But if you're chaining (e.g. promote a lead magnet → retarget for FEO → retarget for core offer), set up 2 or 3 campaigns here. Each gets its own Jeff Walker S1 → S2 → S3 → S4 launch sequence.</div>
+    <div class="field">
+      <label>How many connected campaigns?</label>
+      <select id="f_campaignCount" onchange="updateCampaignPhasesUI()">
+        <option value="1" selected>1 — single campaign (default)</option>
+        <option value="2">2 — chained (e.g. Lead Magnet → FEO)</option>
+        <option value="3">3 — full chain (Lead Magnet → FEO → Core Offer)</option>
+      </select>
+    </div>
+
+    <div id="campaignPhasesContainer" style="margin-top:16px;display:none">
+      <!-- Campaign 1 -->
+      <div class="campaign-phase-block" data-phase-idx="1" style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--card2)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--cyan);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">1</span><strong style="font-size:13px;color:var(--navy)">Campaign 1</strong></div>
+        <div class="grid-2">
+          <div class="field"><label>Campaign name</label><input id="f_camp1_name" placeholder="e.g. '7-Day Form Fix Webinar Drive'"></div>
+          <div class="field"><label>Campaign type</label><select id="f_camp1_type">
+            <option value="leadMagnet" selected>Lead Magnet drive</option>
+            <option value="feo">FEO drive</option>
+            <option value="core">Core Offer drive</option>
+            <option value="custom">Custom</option>
+          </select></div>
+          <div class="field"><label>Campaign start date</label><input id="f_camp1_start" type="date"></div>
+          <div class="field"><label>Launch / end date</label><input id="f_camp1_end" type="date"></div>
+        </div>
+      </div>
+      <!-- Campaign 2 -->
+      <div class="campaign-phase-block" data-phase-idx="2" style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--card2);display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--gold);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">2</span><strong style="font-size:13px;color:var(--navy)">Campaign 2 — picks up after Campaign 1</strong></div>
+        <div class="grid-2">
+          <div class="field"><label>Campaign name</label><input id="f_camp2_name" placeholder="e.g. 'FEO Retarget — Accelerator'"></div>
+          <div class="field"><label>Campaign type</label><select id="f_camp2_type">
+            <option value="leadMagnet">Lead Magnet drive</option>
+            <option value="feo" selected>FEO drive</option>
+            <option value="core">Core Offer drive</option>
+            <option value="custom">Custom</option>
+          </select></div>
+          <div class="field"><label>Campaign start date</label><input id="f_camp2_start" type="date"></div>
+          <div class="field"><label>Launch / end date</label><input id="f_camp2_end" type="date"></div>
+        </div>
+      </div>
+      <!-- Campaign 3 -->
+      <div class="campaign-phase-block" data-phase-idx="3" style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:0;background:var(--card2);display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="background:var(--amber);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">3</span><strong style="font-size:13px;color:var(--navy)">Campaign 3 — picks up after Campaign 2</strong></div>
+        <div class="grid-2">
+          <div class="field"><label>Campaign name</label><input id="f_camp3_name" placeholder="e.g. 'Core Offer Launch — Elevate'"></div>
+          <div class="field"><label>Campaign type</label><select id="f_camp3_type">
+            <option value="leadMagnet">Lead Magnet drive</option>
+            <option value="feo">FEO drive</option>
+            <option value="core" selected>Core Offer drive</option>
+            <option value="custom">Custom</option>
+          </select></div>
+          <div class="field"><label>Campaign start date</label><input id="f_camp3_start" type="date"></div>
+          <div class="field"><label>Launch / end date</label><input id="f_camp3_end" type="date"></div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--textSub);font-style:italic">Each campaign auto-divides into Jeff Walker phases — S1 awareness → S2 build → S3 warm-up → S4 LAUNCH. The Calendar tab shows the day-by-day plan across every campaign you set.</div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-eyebrow">Campaign Details</div>
     <div class="card-title">What is this campaign for?</div>
@@ -745,6 +811,11 @@ select option { background: #fff; }
 <!-- TIER 2.4: PAGE 10 — GYM FLOOR -->
 <div class="page" id="page10">
   <div id="gymfloorOut"><div class="empty"><div class="empty-icon">🏋️</div><div class="empty-title">Gym Floor not enabled</div><div class="empty-sub">Tick "Gym floor" under Distribution Channels (or set your sales path to "Gym floor only") on the Campaign Brief.</div></div></div>
+</div>
+
+<!-- TIER 2.6c: PAGE 11 — CALENDAR -->
+<div class="page" id="page11">
+  <div id="calendarOut"><div class="empty"><div class="empty-icon">📅</div><div class="empty-title">Calendar populates after you generate</div><div class="empty-sub">Once you've generated a campaign plan, this tab will show the day-by-day Calendar — every post, every email, every ad flight on the date it goes out. Set up Campaign Phases on the Brief to break a chained campaign into a continuous timeline.</div><button onclick="showTab(2)" style="margin-top:14px;background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Go to Campaign Brief →</button></div></div>
 </div>
 </div>
 
@@ -947,6 +1018,20 @@ function bf() {
       coreOffer:  !!document.getElementById('f_meta_core')?.checked,
       engagement: !!document.getElementById('f_meta_engagement')?.checked
     },
+    // TIER 2.6a: Campaign Phases — 1-3 chained campaigns
+    campaignCount: parseInt(document.getElementById('f_campaignCount')?.value || '1'),
+    campaigns: (() => {
+      const count = parseInt(document.getElementById('f_campaignCount')?.value || '1');
+      const arr = [];
+      for (let i = 1; i <= count; i++) {
+        const name  = document.getElementById('f_camp' + i + '_name')?.value || '';
+        const type  = document.getElementById('f_camp' + i + '_type')?.value || 'custom';
+        const start = document.getElementById('f_camp' + i + '_start')?.value || '';
+        const end   = document.getElementById('f_camp' + i + '_end')?.value || '';
+        if (name || start || end) arr.push({ name, type, start, end });
+      }
+      return arr;
+    })(),
     f2f:   S.f2f, opts: S.opts
   };
 }
@@ -1265,6 +1350,18 @@ function restoreFormDraft() {
     setChk2('f_meta_core',       b.metaCampaigns.coreOffer);
     setChk2('f_meta_engagement', b.metaCampaigns.engagement);
   }
+  // TIER 2.6a: campaign phases
+  if (b.campaignCount) setVal('f_campaignCount', String(b.campaignCount));
+  if (Array.isArray(b.campaigns)) {
+    b.campaigns.forEach((c, i) => {
+      const n = i + 1;
+      setVal('f_camp' + n + '_name',  c.name);
+      setVal('f_camp' + n + '_type',  c.type);
+      setVal('f_camp' + n + '_start', c.start);
+      setVal('f_camp' + n + '_end',   c.end);
+    });
+  }
+  if (typeof updateCampaignPhasesUI === 'function') updateCampaignPhasesUI();
   if (b.channels) {
     const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
     setChk('f_chan_landing',  b.channels.landing);
@@ -1277,7 +1374,7 @@ function restoreFormDraft() {
   if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
 }
 function wireFormAutoSave() {
-  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose','f_meta_lm','f_meta_feo','f_meta_core','f_meta_engagement'];
+  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose','f_meta_lm','f_meta_feo','f_meta_core','f_meta_engagement','f_campaignCount','f_camp1_name','f_camp1_type','f_camp1_start','f_camp1_end','f_camp2_name','f_camp2_type','f_camp2_start','f_camp2_end','f_camp3_name','f_camp3_type','f_camp3_start','f_camp3_end'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1340,6 +1437,61 @@ function makeCollapsible(cardEl, defaultCollapsed) {
   apply();
   title.addEventListener('click', () => { collapsed = !collapsed; apply(); });
 }
+// TIER 2.6a: derive Jeff Walker S1-S4 sub-phases from a campaign's date window.
+// Returns [{label, start, end, daysOut, durationDays}] for each of S1/S2/S3/S4.
+// Default split: S1 = first ~40%, S2 = next ~30%, S3 = next ~20%, S4 = last ~10%.
+function deriveSubPhases(start, end) {
+  if (!start || !end) return [];
+  const s = new Date(start), e = new Date(end);
+  const totalMs = e.getTime() - s.getTime();
+  if (totalMs <= 0) return [];
+  const totalDays = Math.max(1, Math.round(totalMs / 86400000));
+  const splits = [0.40, 0.30, 0.20, 0.10]; // S1, S2, S3, S4 proportions
+  const labels = [
+    { code: 'S1', name: 'S1 · Pre-pre launch (awareness of problem)' },
+    { code: 'S2', name: 'S2 · Pre-launch build up' },
+    { code: 'S3', name: 'S3 · Proof / concept warm up' },
+    { code: 'S4', name: 'S4 · LAUNCH' }
+  ];
+  const phases = [];
+  let cursor = new Date(s);
+  splits.forEach((p, i) => {
+    const days = i === splits.length - 1
+      ? Math.max(1, totalDays - phases.reduce((a, ph) => a + ph.durationDays, 0))
+      : Math.max(1, Math.round(totalDays * p));
+    const phaseEnd = new Date(cursor);
+    phaseEnd.setDate(phaseEnd.getDate() + days - 1);
+    if (phaseEnd > e) phaseEnd.setTime(e.getTime());
+    phases.push({
+      code: labels[i].code,
+      label: labels[i].name,
+      start: cursor.toISOString().slice(0, 10),
+      end: phaseEnd.toISOString().slice(0, 10),
+      durationDays: days
+    });
+    cursor = new Date(phaseEnd);
+    cursor.setDate(cursor.getDate() + 1);
+  });
+  return phases;
+}
+
+// TIER 2.6a: Show/hide campaign phase blocks based on the count dropdown.
+function updateCampaignPhasesUI() {
+  const count = parseInt(document.getElementById('f_campaignCount')?.value || '1');
+  const container = document.getElementById('campaignPhasesContainer');
+  if (!container) return;
+  container.style.display = count >= 1 ? '' : 'none';
+  for (let i = 1; i <= 3; i++) {
+    const block = container.querySelector('[data-phase-idx="' + i + '"]');
+    if (block) block.style.display = i <= count ? '' : 'none';
+  }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', updateCampaignPhasesUI);
+} else {
+  setTimeout(updateCampaignPhasesUI, 0);
+}
+
 function setupCollapsibles() {
   const eyebrows = document.querySelectorAll('.card-eyebrow');
   eyebrows.forEach(eb => {
@@ -1501,8 +1653,8 @@ async function generate() {
 
     // ── Step 2: Content Plan (two calls) ──
     markStep(2, 'active'); setLoadingSub('Building your 4-week content plan…');
-    const ct1 = await api(sys,pContent(b,'1-2'),5000);
-    const ct2 = await api(sys,pContent(b,'3-4'),5000);
+    const ct1 = await api(sys,pContent(b,'1-2'),8000);
+    const ct2 = await api(sys,pContent(b,'3-4'),8000);
     const ct = mergeContent(ct1,ct2);
     rContent(ct); S.res.content=ct; saveCampaign(b);
     markStep(2, 'done');
@@ -1652,11 +1804,59 @@ function pLead(b){
 '{"leadMagnet":{"name":"","format":"","pain":"","outcome":"","bridge":"","hook":"","valueCheck":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"feo":{"name":"","format":"","price":"","duration":"","pain":"","outcome":"","decisionMoment":"","valueEquation":"","whyThisFormat":"","landingPage":{"headline":"","subhead":"","introParagraph":"","bullets":["","","",""],"ctaButtonText":"","ctaSubtext":"","socialProofLine":"","objectionHandle":""}},"reactivationOption":{"trigger":"","offer":"","message":""}}';
 }
 
-function pContent(b,weeks){
-  const wk = weeks==='1-2' ? 'weeks 1 and 2 ONLY' : 'weeks 3 and 4 ONLY';
-  const startW = weeks==='1-2' ? 1 : 3;
-  return 'Content plan for '+wk+' (weeks '+weeks+'). 4 posts per week minimum. Niche: '+b.niche+' | Offer: "'+b.offer+'" | Month: '+b.month+' | Objective: '+b.obj+
-    '\nReturn: {"contentRatio":"","weeklyPlan":[{"week":'+startW+',"theme":"","posts":[{"day":"","pillar":"","format":"Reel/Carousel/Story/Talking Head","hook":"","storyArc":"","cta":"","documentPrompt":"","whyItWorks":""}]}],"gymFloorContent":[]}';
+// TIER 2.6b: Content Plan rebuilt — date-anchored posts with paste-ready captions,
+// hook/scene/angle/visual structure, platform-aware, testimonial-aware, phase-aware.
+// Each post knows which date + which campaign + which sub-phase it belongs to.
+function pContent(b, weeks) {
+  const wk = weeks === '1-2' ? 'weeks 1 and 2 ONLY' : 'weeks 3 and 4 ONLY';
+  const startW = weeks === '1-2' ? 1 : 3;
+  const lm = S.res && S.res.lead && S.res.lead.leadMagnet;
+  const feo = S.res && S.res.lead && S.res.lead.feo;
+  // Identify which platforms to write for from the active channels
+  const ch = b.channels || {};
+  const platforms = [];
+  if (ch.social) platforms.push('Instagram', 'TikTok', 'Facebook');
+  if (ch.email) platforms.push('Email-list-supporting');
+  if (ch.dm) platforms.push('DM-warming');
+  // Add campaign phase context if defined
+  let phaseLine = '';
+  if (Array.isArray(b.campaigns) && b.campaigns.length) {
+    const phasesByCamp = b.campaigns.map((c, i) => {
+      const subs = deriveSubPhases(c.start, c.end);
+      return '  Campaign ' + (i+1) + ' "' + (c.name || '(unnamed)') + '" (' + c.type + '): ' + (c.start || '?') + ' → ' + (c.end || '?') +
+        (subs.length ? '\n    Sub-phases: ' + subs.map(p => p.code + ' ' + p.start + '–' + p.end).join(' · ') : '');
+    }).join('\n');
+    phaseLine = '\n\nCAMPAIGN PHASES (assign each post to a campaign + sub-phase):\n' + phasesByCamp;
+  } else if (b.start && b.launch) {
+    const subs = deriveSubPhases(b.start, b.launch);
+    if (subs.length) phaseLine = '\n\nCAMPAIGN PHASES (single campaign): ' + subs.map(p => p.code + ' ' + p.start + '–' + p.end).join(' · ');
+  }
+
+  return 'Content plan — ' + wk + ' (weeks ' + weeks + ', 4 posts per week minimum). ' +
+    'Niche: ' + b.niche + ' | Core offer: "' + b.offer + '" | Month: ' + b.month + ' | Objective: ' + b.obj +
+    pathChannelsCtx(b) +
+    (lm ? '\nLead magnet to mention by name: "' + (lm.name||'') + '"' : '') +
+    (feo ? '\nFEO to mention by name: "' + (feo.name||'') + '"' : '') +
+    (platforms.length ? '\nPrimary platforms: ' + platforms.join(', ') : '') +
+    phaseLine +
+    '\n\nFOR EVERY POST, generate ALL of these fields (no shortcuts, no story-arc placeholders):\n' +
+    '  • date (YYYY-MM-DD) — the actual day it should be posted; pick dates inside the relevant week, spaced across Mon/Wed/Fri/Sun (or the equivalent)\n' +
+    '  • daysOut — days until the next campaign launch (positive integer; 0 = launch day)\n' +
+    '  • phaseCode (S1 / S2 / S3 / S4) — which Jeff Walker sub-phase this post supports\n' +
+    '  • campaignIndex (1, 2, or 3) — which campaign this post belongs to\n' +
+    '  • platform — e.g. Instagram, TikTok, LinkedIn, Facebook (pick the best fit for the post type)\n' +
+    '  • format — Reel / Carousel / Story / Talking Head / Static / Live\n' +
+    '  • pillar — the theme/category (Mindset, Training, Nutrition, Lifestyle, Social Proof, etc)\n' +
+    '  • angle — the SPECIFIC take/perspective for this post (NOT the pillar, the SHARP take)\n' +
+    '  • hook — first 1-2 lines of the actual caption / first 3 seconds of the video — scroll-stopping\n' +
+    '  • scene — the visual setup / what the viewer sees (e.g. "Talking head in the gym, post-workout sweat"). One line.\n' +
+    '  • caption — the FULL paste-ready caption (4-8 lines, line-break-heavy, human voice). Coach copies + pastes this verbatim. If a CTA exists, it lives inside the caption.\n' +
+    '  • cta — the one-line CTA (extracted for the calendar view)\n' +
+    '  • visualDirection — what to film / design for the visual (specific brief — not "make it engaging")\n' +
+    '  • documentPrompt — what to capture in real life that becomes this post (Simon Booth "document don\'t manufacture")\n' +
+    '  • whyItWorks — one line on which PTMA rule this serves\n' +
+    '\nReturn this EXACT JSON shape (no extra fields, no markdown fences):\n' +
+    '{"contentRatio":"80/20 split — explain in 1 sentence for this niche","weeklyPlan":[{"week":' + startW + ',"theme":"","posts":[{"date":"","daysOut":0,"phaseCode":"S1","campaignIndex":1,"platform":"","format":"","pillar":"","angle":"","hook":"","scene":"","caption":"","cta":"","visualDirection":"","documentPrompt":"","whyItWorks":""}]}],"gymFloorContent":[]}';
 }
 
 // TIER 2.3: pEmail rewritten to support 3-10 emails, day-zero choice, and optional tone samples.
@@ -2201,24 +2401,88 @@ function rLead(d){
 }
 
 // ── RENDER CONTENT ─────────────────────────────────────────────────────────
+// TIER 2.6b: Content Plan renderer — shows weekly themes + full paste-ready captions.
+// Each post shows: date + days-out + phase code + platform + format + pillar + angle,
+// then the actual caption verbatim (the coach can copy & paste straight to socials).
 function rContent(d){
   if(!d) return;
   let h=stdBanner();
   if(d.contentRatio){
     h+=`<div class="card card-cyan"><div class="section-label">Content Ratio — 80/20 Rule</div><p style="font-size:13px;color:var(--textMid)">${d.contentRatio}</p></div>`;
   }
-  (d.weeklyPlan||[]).forEach(wk=>{
-    h+=`<div class="card"><div class="week-header"><span class="week-label">Week ${wk.week}</span><span class="week-theme">${wk.theme}</span></div>`;
-    (wk.posts||[]).forEach(p=>{
-      const ct=`${p.hook}\n\nStory: ${p.storyArc}\n\nCTA: ${p.cta}`;
-      h+=`<div class="post-card"><div class="post-top"><span class="post-day">${p.day}</span><span class="badge badge-cyan">${p.format}</span>${cp('p'+Math.random().toString(36).slice(2,7),ct)}</div><div class="post-hook">"${p.hook}"</div><div class="post-detail">Story arc: ${p.storyArc}</div><div class="post-detail" style="color:var(--teal)">CTA: ${p.cta}</div>${p.documentPrompt?`<div class="post-capture"><span>📹</span><span>Capture: ${p.documentPrompt}</span></div>`:''}</div>`;
+
+  // Phase colour mapping
+  const phaseColor = (code) => ({S1:'var(--cyan)', S2:'var(--teal)', S3:'var(--green)', S4:'var(--amber)'}[code] || 'var(--navy)');
+  // Platform icon
+  const platformIcon = (p) => {
+    const x = (p || '').toLowerCase();
+    if (x.includes('insta')) return '📷';
+    if (x.includes('tiktok')) return '🎵';
+    if (x.includes('linkedin')) return '💼';
+    if (x.includes('facebook') || x === 'fb') return '👥';
+    if (x.includes('youtube')) return '▶️';
+    if (x.includes('email')) return '📧';
+    if (x.includes('dm')) return '💬';
+    return '📝';
+  };
+
+  (d.weeklyPlan||[]).forEach(wk => {
+    h += `<div class="card"><div class="week-header"><span class="week-label">Week ${wk.week}</span><span class="week-theme">${wk.theme || ''}</span></div>`;
+    (wk.posts||[]).forEach((p, idx) => {
+      const id = 'p_w' + wk.week + '_' + idx;
+      const dateLabel = p.date || p.day || '';
+      const phaseCode = p.phaseCode || '';
+      const phaseCol = phaseColor(phaseCode);
+      const daysOut = (p.daysOut != null && p.daysOut !== '') ? p.daysOut + ' days out' : '';
+      const fullCopy = (p.caption || p.hook || '') + (p.cta && !(p.caption||'').toLowerCase().includes((p.cta||'').toLowerCase()) ? '\n\n' + p.cta : '');
+      h += '<div class="post-card" style="border-left:3px solid ' + phaseCol + '">';
+      // Top row — date / phase / platform / format / copy button
+      h += '<div class="post-top" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+      if (dateLabel) h += '<span class="post-day" style="font-weight:700;color:var(--navy);font-size:13px">' + dateLabel + '</span>';
+      if (phaseCode) h += '<span style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:' + phaseCol + ';font-weight:700;background:#fff;border:1px solid ' + phaseCol + ';border-radius:999px;padding:3px 8px">' + phaseCode + '</span>';
+      if (daysOut)   h += '<span style="font-size:10px;color:var(--textSub);background:var(--card2);border-radius:999px;padding:3px 8px">' + daysOut + '</span>';
+      if (p.platform) h += '<span class="badge badge-cyan">' + platformIcon(p.platform) + ' ' + p.platform + '</span>';
+      if (p.format)   h += '<span class="badge badge-gold">' + p.format + '</span>';
+      h += '<span style="margin-left:auto">' + cp(id, fullCopy) + '</span>';
+      h += '</div>';
+      // Pillar + angle
+      if (p.pillar || p.angle) {
+        h += '<div style="font-size:11px;color:var(--textSub);margin:8px 0 6px"><strong>' + (p.pillar || '') + '</strong>' + (p.angle ? ' · ' + p.angle : '') + '</div>';
+      }
+      // Hook
+      if (p.hook) h += '<div class="post-hook" style="font-style:italic;color:var(--text);font-size:14px;margin-bottom:10px">"' + p.hook + '"</div>';
+      // Full caption (paste-ready)
+      if (p.caption) {
+        h += '<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;font-size:13px;line-height:1.65;color:var(--text);white-space:pre-wrap">' + p.caption + '</div>';
+      }
+      // CTA (if not already in caption)
+      if (p.cta && !(p.caption||'').toLowerCase().includes((p.cta||'').toLowerCase())) {
+        h += '<div class="post-detail" style="color:var(--teal);font-weight:600">CTA: ' + p.cta + '</div>';
+      }
+      // Scene + visual direction
+      if (p.scene || p.visualDirection) {
+        h += '<div style="margin-top:10px;padding:10px 12px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:6px;font-size:12px;color:var(--teal)">';
+        if (p.scene)            h += '<div><strong>🎬 Scene:</strong> ' + p.scene + '</div>';
+        if (p.visualDirection)  h += '<div style="margin-top:4px"><strong>📐 Visual direction:</strong> ' + p.visualDirection + '</div>';
+        h += '</div>';
+      }
+      // Document prompt
+      if (p.documentPrompt) {
+        h += '<div class="post-capture" style="margin-top:8px"><span>📹</span> <span><strong>Capture:</strong> ' + p.documentPrompt + '</span></div>';
+      }
+      // Why it works
+      if (p.whyItWorks) {
+        h += '<div style="font-size:11px;color:var(--textSub);margin-top:8px;font-style:italic">Why it works: ' + p.whyItWorks + '</div>';
+      }
+      h += '</div>';
     });
-    h+=`</div>`;
+    h += '</div>';
   });
-  if(d.gymFloorContent?.length){
-    h+=`<div class="card card-purple"><div class="section-label">Gym Floor Content — Simon Booth</div>${d.gymFloorContent.map(g=>`<div class="kv"><div class="v">📹 ${g}</div></div>`).join('')}</div>`;
+
+  if (d.gymFloorContent?.length) {
+    h += `<div class="card card-purple"><div class="section-label">Gym Floor Content — Simon Booth</div>${d.gymFloorContent.map(g => `<div class="kv"><div class="v">📹 ${g}</div></div>`).join('')}</div>`;
   }
-  document.getElementById('contentOut').innerHTML=h;
+  document.getElementById('contentOut').innerHTML = h;
 }
 
 // ── RENDER EMAIL ───────────────────────────────────────────────────────────
@@ -2547,6 +2811,290 @@ function rMeta(d, b) {
 // ── RENDER GYM FLOOR ──────────────────────────────────────────────────────
 // TIER 2.4: Renders Nik's 4-step gym floor process as 4 distinct step cards
 // with the philosophy, scripts, branches, questionnaire, and weekly targets.
+// ── RENDER CALENDAR ────────────────────────────────────────────────────────
+// TIER 2.6c: Day-by-day calendar that AGGREGATES content posts (S.res.content),
+// emails (S.res.email), Meta ad flights (S.res.meta), DM nudges (S.res.dm),
+// and gym-floor activities (S.res.gymfloor) into one continuous timeline.
+// Mirrors the Campaign Planner sheet in Nik's MASTER 2026 Business Plan:
+// columns per active channel from the Brief, full content inline.
+function rCalendar() {
+  const el = document.getElementById('calendarOut');
+  if (!el) return;
+  const b = S.brief || {};
+  const ch = b.channels || {};
+  const camps = Array.isArray(b.campaigns) ? b.campaigns : [];
+  const hasAnyResults = S.res.strat || S.res.content || S.res.email || S.res.dm || S.res.meta || S.res.gymfloor;
+  if (!hasAnyResults) return; // leave the empty state
+  let h = stdBanner();
+
+  // 1. Header — campaign overview (mirrors the top of Nik's Campaign Planner sheet)
+  if (b.offer || camps.length) {
+    h += '<div class="card card-cyan"><div class="section-label">Campaign Overview</div><div class="grid-2">';
+    if (b.offer) h += '<div class="kv"><div class="k">Core offer</div><div class="v v-cyan">' + b.offer + '</div></div>';
+    if (b.price) h += '<div class="kv"><div class="k">Offer price</div><div class="v">£' + b.price + '</div></div>';
+    if (b.goal)  h += '<div class="kv"><div class="k">Monthly revenue target</div><div class="v v-gold">£' + b.goal + '</div></div>';
+    if (camps.length) h += '<div class="kv"><div class="k">Connected campaigns</div><div class="v">' + camps.length + '</div></div>';
+    h += '</div></div>';
+  }
+
+  // 2. Build day-map: { 'YYYY-MM-DD': { date, daysOut, phaseCode, campaignName, items: [{channel, summary, full}] } }
+  const dayMap = {};
+  const ensure = (dateStr, campIdx, phaseCode, campaignName) => {
+    if (!dateStr) return null;
+    if (!dayMap[dateStr]) dayMap[dateStr] = {
+      date: dateStr,
+      campIdx: campIdx,
+      campaignName: campaignName || '',
+      phaseCode: phaseCode || '',
+      items: []
+    };
+    if (campIdx && !dayMap[dateStr].campIdx) dayMap[dateStr].campIdx = campIdx;
+    if (phaseCode && !dayMap[dateStr].phaseCode) dayMap[dateStr].phaseCode = phaseCode;
+    return dayMap[dateStr];
+  };
+
+  // 2a. Pull each campaign's launch date as an anchor + derive sub-phases
+  const phasesByCamp = camps.map(c => ({
+    name: c.name || '(unnamed)',
+    type: c.type,
+    start: c.start,
+    end: c.end,
+    subPhases: deriveSubPhases(c.start, c.end)
+  }));
+  const phaseFor = (dateStr) => {
+    for (let i = 0; i < phasesByCamp.length; i++) {
+      const cp = phasesByCamp[i];
+      if (!cp.start || !cp.end) continue;
+      if (dateStr >= cp.start && dateStr <= cp.end) {
+        const sp = cp.subPhases.find(s => dateStr >= s.start && dateStr <= s.end);
+        return { campIdx: i + 1, campaignName: cp.name, phaseCode: sp ? sp.code : '' };
+      }
+    }
+    // Fallback — single campaign via Brief Start/Launch
+    if (b.start && b.launch && dateStr >= b.start && dateStr <= b.launch) {
+      const subs = deriveSubPhases(b.start, b.launch);
+      const sp = subs.find(s => dateStr >= s.start && dateStr <= s.end);
+      return { campIdx: 1, campaignName: 'Campaign', phaseCode: sp ? sp.code : '' };
+    }
+    return { campIdx: 0, campaignName: '', phaseCode: '' };
+  };
+
+  // 2b. Aggregate Content Plan posts (date-anchored from Tier 2.6b)
+  const contentPosts = [];
+  ((S.res.content && S.res.content.weeklyPlan) || []).forEach(wk => {
+    (wk.posts || []).forEach(p => contentPosts.push(p));
+  });
+  contentPosts.forEach(p => {
+    if (!p.date) return;
+    const meta = phaseFor(p.date);
+    const day = ensure(p.date, meta.campIdx, p.phaseCode || meta.phaseCode, meta.campaignName);
+    if (!day) return;
+    day.items.push({
+      channel: p.platform || 'Social',
+      kind: 'post',
+      summary: (p.format ? '[' + p.format + '] ' : '') + (p.angle || p.hook || 'Post'),
+      full: p.caption || p.hook || '',
+      hook: p.hook || '',
+      cta: p.cta || '',
+      visualDirection: p.visualDirection || '',
+      scene: p.scene || ''
+    });
+  });
+
+  // 2c. Aggregate Email Sequence — use Day 0/1/N spacing from Email 1 send date
+  if (S.res.email && S.res.email.sequence) {
+    // Determine Email 1 send date: launch_date OR campaign 1 start
+    const anchorDate = (camps[0] && camps[0].start) || b.start;
+    const isDay0 = b.emailDayZero !== false;
+    if (anchorDate) {
+      const baseDate = new Date(anchorDate);
+      // Standard nurture spacing: 0, 2, 4, 7, 9, 11, 13, 15, 17, 19
+      const spacing = [0, 2, 4, 7, 9, 11, 13, 15, 17, 19];
+      S.res.email.sequence.forEach((em, i) => {
+        const offset = spacing[i] != null ? spacing[i] : i * 2;
+        const realOffset = isDay0 ? offset : offset + 1;
+        const sendDate = new Date(baseDate);
+        sendDate.setDate(sendDate.getDate() + realOffset);
+        const dateStr = sendDate.toISOString().slice(0, 10);
+        const meta = phaseFor(dateStr);
+        const day = ensure(dateStr, meta.campIdx, meta.phaseCode, meta.campaignName);
+        if (!day) return;
+        day.items.push({
+          channel: 'Email',
+          kind: 'email',
+          summary: 'Email ' + (em.emailNum || (i+1)) + ' — ' + (em.subjectLine || em.purpose || 'Subject'),
+          full: 'Subject: ' + (em.subjectLine || '') + '\n\n' + (em.hook || '') + '\n\n' + ((em.bodyOutline || []).join('\n')) + (em.cta ? '\n\nCTA: ' + em.cta : '')
+        });
+      });
+    }
+  }
+
+  // 2d. Aggregate Meta ad flights — each ad gets flight date range
+  if (S.res.meta) {
+    const adsToFlight = [];
+    if (S.res.meta.leadMagnetAd) adsToFlight.push({ ad: S.res.meta.leadMagnetAd, label: 'Lead Magnet Ad (cold)' });
+    if (S.res.meta.feoAd)        adsToFlight.push({ ad: S.res.meta.feoAd,        label: 'FEO Retarget Ad (warm)' });
+    if (S.res.meta.coreOfferAd)  adsToFlight.push({ ad: S.res.meta.coreOfferAd,  label: 'Core Offer Retarget Ad (hot)' });
+    if (S.res.meta.engagementAd) adsToFlight.push({ ad: S.res.meta.engagementAd, label: 'Engagement Ad' });
+    // Flight = whole campaign window for now (Phase 1 for LM, Phase 2 for FEO, etc.)
+    const flightStart = b.start || (camps[0] && camps[0].start);
+    const flightEnd   = b.launch || (camps[camps.length-1] && camps[camps.length-1].end);
+    if (flightStart && flightEnd) {
+      adsToFlight.forEach(a => {
+        // Only mark the start date as the "launch" marker — too noisy to repeat every day
+        const meta = phaseFor(flightStart);
+        const day = ensure(flightStart, meta.campIdx, meta.phaseCode, meta.campaignName);
+        if (day) day.items.push({
+          channel: 'Paid Ads',
+          kind: 'ad-flight',
+          summary: '🚀 ' + a.label + ' flight begins (runs through ' + flightEnd + ')',
+          full: (a.ad.primaryText || '') + '\n\nHeadline: ' + (a.ad.headline || '') + '\nCTA: ' + (a.ad.ctaButton || '')
+        });
+      });
+    }
+  }
+
+  // 2e. Aggregate DM scripts — show as a "use this script" reminder on relevant days (just one anchor)
+  if (S.res.dm && S.res.dm.welcomeDM && (b.start || (camps[0] && camps[0].start))) {
+    const anchor = b.start || camps[0].start;
+    const meta = phaseFor(anchor);
+    const day = ensure(anchor, meta.campIdx, meta.phaseCode, meta.campaignName);
+    if (day) day.items.push({ channel: 'DM', kind: 'dm-scripts', summary: '💬 DM scripts now active (see DM Scripts tab)', full: 'Welcome DM, Story Reply, Post Engagement, Inbound Inquiry, Lead Ad Reply, Reactivation — all live from this date.' });
+  }
+
+  // 3. Render — sort by date
+  const dayKeys = Object.keys(dayMap).sort();
+  if (dayKeys.length === 0) {
+    h += '<div class="card"><p style="font-size:14px;color:var(--textMid);text-align:center;padding:20px">No date-anchored items yet. Set Campaign Start + Launch Date on the Brief, fill in Campaign Phases, and regenerate the Content Plan to populate the Calendar.</p></div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  // Build active-channel column list
+  const channelColumns = [];
+  if (ch.social)    channelColumns.push({ key: 'Social',   label: '📱 Social',   match: (it) => it.kind === 'post' && !/email/i.test(it.channel) });
+  if (ch.email)     channelColumns.push({ key: 'Email',    label: '📧 Email',    match: (it) => it.kind === 'email' });
+  if (ch.paid)      channelColumns.push({ key: 'Paid Ads', label: '💰 Paid Ads', match: (it) => it.kind === 'ad-flight' });
+  if (ch.dm)        channelColumns.push({ key: 'DM',       label: '💬 DM',       match: (it) => it.kind === 'dm-scripts' });
+  if (ch.gymfloor)  channelColumns.push({ key: 'Gym',      label: '🏋️ Gym Floor', match: (it) => it.kind === 'gym-floor' });
+  // Always have at least one column
+  if (channelColumns.length === 0) channelColumns.push({ key: 'All', label: 'All', match: () => true });
+
+  const phaseColor = (code) => ({ S1:'var(--cyan)', S2:'var(--teal)', S3:'var(--green)', S4:'var(--amber)' }[code] || 'var(--borderMid)');
+
+  // 4. Day-by-day rows
+  h += '<div class="card" style="padding:0;overflow-x:auto">';
+  h += '<div style="padding:14px 18px;background:var(--card2);border-bottom:1px solid var(--border)"><div class="section-label" style="margin:0">Day-by-Day Calendar</div><div style="font-size:12px;color:var(--textSub);margin-top:4px">Every post, email, ad flight and DM activation on the day it goes out. Click any cell to copy.</div></div>';
+  // Header row
+  h += '<div style="display:grid;grid-template-columns:120px 80px minmax(140px,1fr) ' + channelColumns.map(() => 'minmax(180px,2fr)').join(' ') + ';background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;letter-spacing:0.05em;text-transform:uppercase;color:var(--textSub);font-weight:700">' +
+    '<div style="padding:10px 14px;border-right:1px solid var(--border)">Date</div>' +
+    '<div style="padding:10px 14px;border-right:1px solid var(--border)">Phase</div>' +
+    '<div style="padding:10px 14px;border-right:1px solid var(--border)">What\'s happening</div>' +
+    channelColumns.map(c => '<div style="padding:10px 14px;border-right:1px solid var(--border)">' + c.label + '</div>').join('') +
+    '</div>';
+  // Data rows
+  dayKeys.forEach(dk => {
+    const day = dayMap[dk];
+    const phaseCol = phaseColor(day.phaseCode);
+    const d = new Date(dk);
+    const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    const dateLabel = dayName + ' ' + dk;
+    // Thing to do = first non-channel-specific item summary, or aggregate
+    const overview = day.items.length === 1 ? day.items[0].summary : day.items.length + ' activities planned';
+    h += '<div style="display:grid;grid-template-columns:120px 80px minmax(140px,1fr) ' + channelColumns.map(() => 'minmax(180px,2fr)').join(' ') + ';border-bottom:1px solid var(--border);font-size:12px;align-items:start">' +
+      '<div style="padding:12px 14px;border-right:1px solid var(--border);font-weight:600;color:var(--navy)">' + dateLabel + (day.campaignName ? '<div style="font-size:10px;color:var(--textSub);font-weight:500;margin-top:2px">' + day.campaignName + '</div>' : '') + '</div>' +
+      '<div style="padding:12px 14px;border-right:1px solid var(--border)"><span style="display:inline-block;font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:#fff;background:' + phaseCol + ';border-radius:999px;padding:3px 9px;font-weight:700">' + (day.phaseCode || '—') + '</span></div>' +
+      '<div style="padding:12px 14px;border-right:1px solid var(--border);color:var(--textMid);line-height:1.45">' + overview + '</div>';
+    channelColumns.forEach(col => {
+      const matching = day.items.filter(col.match);
+      if (matching.length === 0) {
+        h += '<div style="padding:12px 14px;border-right:1px solid var(--border);color:var(--borderMid);font-size:11px">—</div>';
+      } else {
+        h += '<div style="padding:10px 14px;border-right:1px solid var(--border)">';
+        matching.forEach((it, i) => {
+          const cellId = 'cal_' + dk.replace(/-/g, '') + '_' + col.key + '_' + i;
+          h += '<div style="margin-bottom:' + (i < matching.length-1 ? '10px' : '0') + ';padding-bottom:' + (i < matching.length-1 ? '10px' : '0') + ';border-bottom:' + (i < matching.length-1 ? '1px dashed var(--border)' : 'none') + '">';
+          h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><div style="font-weight:600;font-size:11px;color:var(--navy);flex:1">' + it.summary + '</div>' + cp(cellId, it.full || it.summary) + '</div>';
+          if (it.full && it.full.length > 0 && it.full !== it.summary) {
+            h += '<div style="font-size:11px;color:var(--textMid);line-height:1.55;white-space:pre-wrap;padding:8px 10px;background:var(--surface);border-radius:6px;max-height:240px;overflow:auto">' + it.full + '</div>';
+          }
+          if (it.scene)            h += '<div style="font-size:10px;color:var(--teal);margin-top:4px">🎬 ' + it.scene + '</div>';
+          if (it.visualDirection)  h += '<div style="font-size:10px;color:var(--teal);margin-top:2px">📐 ' + it.visualDirection + '</div>';
+          h += '</div>';
+        });
+        h += '</div>';
+      }
+    });
+    h += '</div>';
+  });
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+// TIER 2.6c: Markdown export for the Calendar tab.
+function mdCalendar() {
+  const b = S.brief || {};
+  const dayMap = {};
+  // Same aggregation as rCalendar — duplicated logic for export-only context
+  const phasesByCamp = (Array.isArray(b.campaigns) ? b.campaigns : []).map(c => ({
+    name: c.name || '(unnamed)', type: c.type, start: c.start, end: c.end,
+    subPhases: deriveSubPhases(c.start, c.end)
+  }));
+  const phaseFor = (dateStr) => {
+    for (const cp of phasesByCamp) {
+      if (cp.start && cp.end && dateStr >= cp.start && dateStr <= cp.end) {
+        const sp = cp.subPhases.find(s => dateStr >= s.start && dateStr <= s.end);
+        return { campIdx: phasesByCamp.indexOf(cp) + 1, campaignName: cp.name, phaseCode: sp ? sp.code : '' };
+      }
+    }
+    return { campIdx: 0, campaignName: '', phaseCode: '' };
+  };
+  const ensure = (date, campIdx, phaseCode, campaignName) => {
+    if (!dayMap[date]) dayMap[date] = { date, campIdx, campaignName, phaseCode, items: [] };
+    return dayMap[date];
+  };
+  ((S.res.content && S.res.content.weeklyPlan) || []).forEach(wk => {
+    (wk.posts || []).forEach(p => {
+      if (!p.date) return;
+      const meta = phaseFor(p.date);
+      ensure(p.date, meta.campIdx, p.phaseCode || meta.phaseCode, meta.campaignName).items.push({
+        channel: p.platform || 'Social', label: p.platform || 'Social',
+        summary: '[' + (p.format || 'Post') + '] ' + (p.angle || p.hook || ''),
+        full: p.caption || ''
+      });
+    });
+  });
+  if (S.res.email && S.res.email.sequence) {
+    const anchor = (b.campaigns && b.campaigns[0] && b.campaigns[0].start) || b.start;
+    const isDay0 = b.emailDayZero !== false;
+    const spacing = [0, 2, 4, 7, 9, 11, 13, 15, 17, 19];
+    if (anchor) {
+      S.res.email.sequence.forEach((em, i) => {
+        const offset = (spacing[i] != null ? spacing[i] : i*2) + (isDay0 ? 0 : 1);
+        const d = new Date(anchor); d.setDate(d.getDate() + offset);
+        const dateStr = d.toISOString().slice(0,10);
+        const meta = phaseFor(dateStr);
+        ensure(dateStr, meta.campIdx, meta.phaseCode, meta.campaignName).items.push({
+          channel: 'Email',
+          summary: 'Email ' + (em.emailNum || (i+1)) + ' — ' + (em.subjectLine || em.purpose || ''),
+          full: 'Subject: ' + (em.subjectLine||'') + '\n\n' + (em.hook||'') + '\n\n' + ((em.bodyOutline||[]).join('\n'))
+        });
+      });
+    }
+  }
+  let m = '# Calendar — Day by Day\n\n';
+  Object.keys(dayMap).sort().forEach(dk => {
+    const day = dayMap[dk];
+    m += '## ' + dk + (day.phaseCode ? ' · ' + day.phaseCode : '') + (day.campaignName ? ' · ' + day.campaignName : '') + '\n\n';
+    day.items.forEach(it => {
+      m += '### ' + it.channel + ' — ' + it.summary + '\n\n';
+      if (it.full && it.full !== it.summary) m += '```\n' + ss(it.full) + '\n```\n\n';
+    });
+    m += '---\n\n';
+  });
+  return m;
+}
+
 function rGymFloor(d) {
   if (!d) return;
   const el = document.getElementById('gymfloorOut');
@@ -2675,8 +3223,8 @@ function rGymFloor(d) {
 // PATCHED 2026-05-22 (round 3): a single "Copy this tab" floating button.
 // Reads the active results page's plain text and copies to the clipboard.
 // Shown only on results pages (3 = Strategy through 9 = Meta Ads).
-const TAB_TO_OUT = {3:'stratOut', 4:'leadOut', 5:'contentOut', 6:'emailOut', 7:'dmOut', 8:'manychatOut', 9:'metaOut', 10:'gymfloorOut'};
-const TAB_TO_LABEL = {3:'Strategy', 4:'Lead Gen + FEO', 5:'Content Plan', 6:'Email Sequence', 7:'DM Scripts', 8:'ManyChat', 9:'Meta Ads', 10:'Gym Floor'};
+const TAB_TO_OUT = {3:'stratOut', 4:'leadOut', 5:'contentOut', 6:'emailOut', 7:'dmOut', 8:'manychatOut', 9:'metaOut', 10:'gymfloorOut', 11:'calendarOut'};
+const TAB_TO_LABEL = {3:'Strategy', 4:'Lead Gen + FEO', 5:'Content Plan', 6:'Email Sequence', 7:'DM Scripts', 8:'ManyChat', 9:'Meta Ads', 10:'Gym Floor', 11:'Calendar'};
 
 function showToast(msg) {
   let t = document.getElementById('ptmaToast');
@@ -2846,21 +3394,29 @@ function mdLead(d) {
   return m;
 }
 
+// TIER 2.6b: Markdown export for Content Plan — date-anchored, paste-ready captions.
 function mdContent(d) {
   if (!d) return '';
-  let m = '# 4-Week Content Plan\n\n';
+  let m = '# Content Plan\n\n';
   if (d.contentRatio) m += '> **Content ratio (80/20):** ' + ss(d.contentRatio) + '\n\n';
   (d.weeklyPlan || []).forEach(wk => {
     m += '## Week ' + ss(wk.week) + (wk.theme ? ' — ' + ss(wk.theme) : '') + '\n\n';
     (wk.posts || []).forEach((p, i) => {
-      m += '### Post ' + (i+1) + (p.day ? ' — ' + ss(p.day) : '') + (p.format ? ' (' + ss(p.format) + ')' : '') + '\n';
-      if (p.pillar) m += '- **Pillar:** ' + ss(p.pillar) + '\n';
-      if (p.hook) m += '- **Hook:** _"' + ss(p.hook) + '"_\n';
-      if (p.storyArc) m += '- **Story arc:** ' + ss(p.storyArc) + '\n';
-      if (p.cta) m += '- **CTA:** ' + ss(p.cta) + '\n';
-      if (p.documentPrompt) m += '- **Capture (document, don\'t manufacture):** ' + ss(p.documentPrompt) + '\n';
-      if (p.whyItWorks) m += '- **Why it works:** ' + ss(p.whyItWorks) + '\n';
-      m += '\n';
+      const dateLabel = p.date || p.day || 'Post ' + (i+1);
+      const meta = [p.phaseCode, p.platform, p.format].filter(Boolean).join(' · ');
+      m += '### ' + dateLabel + (meta ? ' — ' + meta : '') + '\n';
+      if (p.daysOut != null && p.daysOut !== '') m += '_' + p.daysOut + ' days out_\n\n';
+      if (p.pillar || p.angle) m += '**' + ss(p.pillar || '') + (p.angle ? ' · ' + ss(p.angle) : '') + '**\n\n';
+      if (p.hook) m += '_Hook: "' + ss(p.hook) + '"_\n\n';
+      if (p.caption) m += '**Caption (paste-ready):**\n\n```\n' + ss(p.caption) + '\n```\n\n';
+      if (p.cta && !(p.caption||'').toLowerCase().includes((p.cta||'').toLowerCase())) m += '**CTA:** ' + ss(p.cta) + '\n\n';
+      if (p.scene)            m += '🎬 **Scene:** ' + ss(p.scene) + '\n';
+      if (p.visualDirection)  m += '📐 **Visual direction:** ' + ss(p.visualDirection) + '\n';
+      if (p.documentPrompt)   m += '📹 **Capture:** ' + ss(p.documentPrompt) + '\n';
+      if (p.whyItWorks)       m += '_Why it works: ' + ss(p.whyItWorks) + '_\n';
+      // Legacy storyArc support
+      if (p.storyArc && !p.caption) m += '_Story arc: ' + ss(p.storyArc) + '_\n';
+      m += '\n---\n\n';
     });
   });
   if (d.gymFloorContent?.length) {
@@ -2963,7 +3519,8 @@ const TAB_TO_MD = {
   7: () => mdDM(S.res.dm),
   8: () => mdGenericFromObj('ManyChat Flow', S.res.manychat),
   9: () => mdMeta(S.res.meta),
-  10: () => mdGymFloor(S.res.gymfloor)
+  10: () => mdGymFloor(S.res.gymfloor),
+  11: () => mdCalendar()
 };
 
 // TIER 2.5b: Markdown export for Meta Ads — funnel-stage layout.
@@ -3202,8 +3759,8 @@ function renderCopyButton() {
     btn.onmouseout = () => btn.style.transform = '';
     document.body.appendChild(btn);
   }
-  // Show only on results tabs
-  btn.style.display = (S.tab >= 3 && S.tab <= 10) ? 'block' : 'none';
+  // Show only on results tabs (incl. Calendar at 11)
+  btn.style.display = (S.tab >= 3 && S.tab <= 11) ? 'block' : 'none';
 }
 
 // TIER 2.2: Per-section "Regenerate this tab" button. Floating, sits left of
@@ -3286,17 +3843,22 @@ function renderRegenButton() {
     btn.onmouseout = () => btn.style.transform = '';
     document.body.appendChild(btn);
   }
-  // Show on results tabs only, AND only when that tab has content (S.res.xxx exists)
+  // Show on results tabs only, AND only when that tab has content.
+  // Calendar (11) is pure aggregation — regenerate would just re-render, so hide regen there.
   const hasContent = ({3:S.res.strat, 4:S.res.lead, 5:S.res.content, 6:S.res.email, 7:S.res.dm, 8:S.res.manychat, 9:S.res.meta, 10:S.res.gymfloor})[S.tab];
   btn.style.display = (S.tab >= 3 && S.tab <= 10 && hasContent) ? 'block' : 'none';
 }
 
 // Re-render the floating buttons whenever showTab is called.
+// TIER 2.6c: also re-aggregate the Calendar when navigating to tab 11.
 const _origShowTab = window.showTab;
 window.showTab = function(n) {
   _origShowTab(n);
   renderCopyButton();
   renderRegenButton();
+  if (n === 11) {
+    try { rCalendar(); } catch (e) { console.warn('rCalendar failed:', e); }
+  }
 };
 
 // ── RESTORE PREVIOUS CAMPAIGN ON PAGE LOAD ─────────────────────────────────
@@ -3357,6 +3919,18 @@ function tryRestoreBanner() {
         setChk('f_meta_core',       b.metaCampaigns.coreOffer);
         setChk('f_meta_engagement', b.metaCampaigns.engagement);
       }
+      // Tier 2.6a — campaign phases
+      if (b.campaignCount) setVal('f_campaignCount', String(b.campaignCount));
+      if (Array.isArray(b.campaigns)) {
+        b.campaigns.forEach((c, i) => {
+          const n = i + 1;
+          setVal('f_camp' + n + '_name',  c.name);
+          setVal('f_camp' + n + '_type',  c.type);
+          setVal('f_camp' + n + '_start', c.start);
+          setVal('f_camp' + n + '_end',   c.end);
+        });
+      }
+      if (typeof updateCampaignPhasesUI === 'function') updateCampaignPhasesUI();
       if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
       // Restore state
       S.lang = saved.lang || null;
