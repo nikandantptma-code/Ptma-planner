@@ -428,6 +428,27 @@ select option { background: #fff; }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* TIER 2.7: Print stylesheet — hide chrome, show only populated panes.
+   Triggered by exportPDF() via body.printing class AND by browser print menu. */
+@media print {
+  /* Hide UI chrome */
+  .tabs, header nav, .topbar,
+  #ptmaCopyAll, #ptmaExportWrap, #ptmaRegenBtn,
+  .loading, .loading-overlay, #loadingOverlay,
+  .gen-pill, .toast, .error-banner, .restore-banner,
+  details summary, .details-summary,
+  button[onclick^="showTab"], .tab,
+  .copy-btn, [class*="copy-btn"] {
+    display: none !important;
+  }
+  /* Force-show every pane that has data, regardless of S.tab */
+  body.printing .pane { display: block !important; page-break-after: always; }
+  body { background: #fff !important; color: #000 !important; }
+  .card, .card-cyan, .card-gold { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+  h1, h2, h3, h4 { page-break-after: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
 </style>
 </head>
 <body>
@@ -1818,10 +1839,12 @@ async function generate() {
       if(b.opts.manychat){
         const mc = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),5500);
         if(mc){rManyChat(mc,b); S.res.manychat=mc; saveCampaign(b);}
+        const mcT=document.getElementById('manychatTab'); if(mcT) mcT.style.display='';
       }
       if(b.opts.meta){
         const mt = await api(sys,pMeta(b),6500);
         if(mt){rMeta(mt,b); S.res.meta=mt; saveCampaign(b);}
+        const mtT=document.getElementById('metaTab'); if(mtT) mtT.style.display='';
       }
       if (wantsGymFloor) {
         showGenPill('Writing your gym-floor 4-step process…', t0);
@@ -1831,6 +1854,12 @@ async function generate() {
       }
     }
     markStep(5, 'done');
+
+    // Belt-and-braces sync: ensure optional tabs match opts (covers restore + future paths)
+    try{
+      const _mc=document.getElementById('manychatTab'); if(_mc) _mc.style.display = S.opts.manychat ? '' : 'none';
+      const _mt=document.getElementById('metaTab'); if(_mt) _mt.style.display = S.opts.meta ? '' : 'none';
+    }catch(_e){}
 
     clearInterval(timerInt);
     hideGenPill();
@@ -4055,6 +4084,274 @@ function renderCopyButton() {
   btn.style.display = (S.tab >= 3 && S.tab <= 11) ? 'block' : 'none';
 }
 
+// ── TIER 2.7: EXPORT SUITE ──────────────────────────────────────────────────
+// Four export modes:
+//   1. Whole campaign as one Markdown file (.md)            — for handing to a VA / pasting into Notion
+//   2. Calendar as CSV download                              — opens in Excel / Numbers / Sheets
+//   3. Calendar as TSV to clipboard                          — paste straight into a Google Sheets tab
+//   4. Print / Save as PDF (window.print + print stylesheet) — for printing or PDF archive
+// All build on the same dayMap aggregation used by rCalendar / mdCalendar.
+
+function _dlBlob(filename, mime, content) {
+  const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+function _csvCell(v) {
+  const s = (v == null ? '' : String(v));
+  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function _tsvCell(v) {
+  // TSV — for Google Sheets paste. Replace tabs/newlines with spaces so the row stays one row per day.
+  return (v == null ? '' : String(v).replace(/\t/g, ' ').replace(/\r?\n/g, ' ↵ '));
+}
+
+// Shared helper — same aggregation logic as rCalendar / mdCalendar. Returns
+// an array of { date, campIdx, campaignName, phaseCode, social, email, paidAds, dm }
+// where each channel cell is a newline-joined summary of all activations that day.
+function _buildCalendarRows() {
+  const b = S.brief || {};
+  const camps = Array.isArray(b.campaigns) ? b.campaigns : [];
+  const phasesByCamp = camps.map(c => ({
+    name: c.name || '(unnamed)', type: c.type, start: c.start, end: c.end,
+    emailMode: c.emailMode, subPhases: deriveSubPhases(c.start, c.end)
+  }));
+  const phaseFor = (dateStr) => {
+    for (let i = 0; i < phasesByCamp.length; i++) {
+      const cp = phasesByCamp[i];
+      if (cp.start && cp.end && dateStr >= cp.start && dateStr <= cp.end) {
+        const sp = cp.subPhases.find(s => dateStr >= s.start && dateStr <= s.end);
+        return { campIdx: i+1, campaignName: cp.name, phaseCode: sp ? sp.code : '' };
+      }
+    }
+    if (b.start && b.launch && dateStr >= b.start && dateStr <= b.launch) {
+      const subs = deriveSubPhases(b.start, b.launch);
+      const sp = subs.find(s => dateStr >= s.start && dateStr <= s.end);
+      return { campIdx: 1, campaignName: 'Campaign', phaseCode: sp ? sp.code : '' };
+    }
+    return { campIdx: 0, campaignName: '', phaseCode: '' };
+  };
+  const dayMap = {};
+  const ensure = (date, meta) => {
+    if (!dayMap[date]) dayMap[date] = { date, campIdx: meta.campIdx, campaignName: meta.campaignName, phaseCode: meta.phaseCode, social: [], email: [], paidAds: [], dm: [] };
+    return dayMap[date];
+  };
+  // Social posts
+  ((S.res.content && S.res.content.weeklyPlan) || []).forEach(wk => {
+    (wk.posts || []).forEach(p => {
+      if (!p.date) return;
+      const meta = phaseFor(p.date);
+      const row = ensure(p.date, meta);
+      row.social.push('[' + (p.format || 'Post') + '] ' + (p.angle || p.hook || ''));
+    });
+  });
+  // Emails — dated mode only (skip nurture-mode chains, dates vary per opt-in)
+  if (S.res.email && S.res.email.sequence) {
+    const isDay0 = b.emailDayZero !== false;
+    const spacing = [0, 2, 4, 7, 9, 11, 13, 15, 17, 19];
+    const groups = {};
+    S.res.email.sequence.forEach(em => {
+      const ci = em.campaignIndex || (camps.length ? 1 : 0);
+      if (!groups[ci]) groups[ci] = [];
+      groups[ci].push(em);
+    });
+    Object.keys(groups).forEach(ciKey => {
+      const ci = parseInt(ciKey) || 0;
+      const camp = ci > 0 ? camps[ci-1] : null;
+      if (camp && camp.emailMode === 'nurture') return;
+      if (camp && !camp.emailMode && camp.type === 'leadMagnet') return;
+      const anchor = camp ? camp.start : ((camps[0] && camps[0].start) || b.start);
+      if (!anchor) return;
+      const base = new Date(anchor);
+      groups[ciKey].forEach((em, i) => {
+        const offset = (spacing[i] != null ? spacing[i] : i*2) + (isDay0 ? 0 : 1);
+        const d = new Date(base); d.setDate(d.getDate() + offset);
+        const dateStr = d.toISOString().slice(0, 10);
+        const meta = phaseFor(dateStr);
+        ensure(dateStr, meta).email.push('Email ' + (em.emailNum || (i+1)) + ': ' + (em.subjectLine || em.purpose || ''));
+      });
+    });
+  }
+  // Paid ads — start of flight only
+  if (S.res.meta) {
+    const md = S.res.meta;
+    const flightStart = md.budgetFramework && md.budgetFramework.flightDates ? (md.budgetFramework.flightDates.match(/\d{4}-\d{2}-\d{2}/) || [])[0] : null;
+    const start = flightStart || (camps[0] && camps[0].start) || b.start;
+    if (start) {
+      const meta = phaseFor(start);
+      if (md.leadMagnetAd)  ensure(start, meta).paidAds.push('🚀 Lead Magnet Ad (cold) flight begins');
+      if (md.feoAd)         ensure(start, meta).paidAds.push('🚀 FEO Retarget Ad (warm) flight begins');
+      if (md.coreOfferAd)   ensure(start, meta).paidAds.push('🚀 Core Offer Retarget Ad (hot) flight begins');
+    }
+  }
+  // DM — anchored to first content date (used as activation reminder)
+  if (S.res.dm) {
+    const firstDate = (S.res.content && S.res.content.weeklyPlan && S.res.content.weeklyPlan[0] && S.res.content.weeklyPlan[0].posts && S.res.content.weeklyPlan[0].posts[0] && S.res.content.weeklyPlan[0].posts[0].date) || (camps[0] && camps[0].start) || b.start;
+    if (firstDate) {
+      const meta = phaseFor(firstDate);
+      ensure(firstDate, meta).dm.push('DM scripts active — welcome / story reply / lead-ad reply');
+    }
+  }
+  return Object.keys(dayMap).sort().map(k => dayMap[k]);
+}
+
+// EXPORT 1: Whole campaign as one Markdown file
+async function exportWholeMarkdown() {
+  const b = S.brief || {};
+  const niche = b.niche || 'campaign';
+  const offer = b.offer || '';
+  const date = new Date().toISOString().slice(0, 10);
+  const parts = [];
+  parts.push('# ' + (offer || 'PTMA Campaign') + '\n');
+  if (niche) parts.push('**Niche:** ' + niche + '\n');
+  if (b.price) parts.push('**Price:** £' + b.price + '\n');
+  if (b.goal)  parts.push('**Monthly revenue target:** £' + b.goal + '\n');
+  if (b.campaigns && b.campaigns.length) parts.push('**Connected campaigns:** ' + b.campaigns.length + '\n');
+  parts.push('\n_Generated by the PTMA Campaign Planner on ' + date + '_\n\n---\n');
+  const order = [
+    { key: 'strat',    label: 'Strategy',         fn: () => mdStrat(S.res.strat) },
+    { key: 'lead',     label: 'Lead Gen + FEO',   fn: () => mdLead(S.res.lead) },
+    { key: 'content',  label: 'Content Plan',     fn: () => mdContent(S.res.content) },
+    { key: 'email',    label: 'Email Sequence',   fn: () => mdEmail(S.res.email) },
+    { key: 'dm',       label: 'DM Scripts',       fn: () => mdDM(S.res.dm) },
+    { key: 'manychat', label: 'ManyChat Flow',    fn: () => mdGenericFromObj('ManyChat Flow', S.res.manychat) },
+    { key: 'meta',     label: 'Meta Ads',         fn: () => mdMeta(S.res.meta) },
+    { key: 'gymfloor', label: 'Gym Floor Process',fn: () => mdGymFloor(S.res.gymfloor) },
+    { key: 'cal',      label: 'Calendar',         fn: () => mdCalendar() }
+  ];
+  let included = 0;
+  order.forEach(sec => {
+    let exists = false;
+    try {
+      if (sec.key === 'cal') exists = !!(S.res.strat || S.res.content || S.res.email);
+      else exists = !!S.res[sec.key];
+    } catch (_) {}
+    if (!exists) return;
+    try {
+      const md = sec.fn();
+      if (md && md.trim().length > 30) {
+        parts.push('\n' + md.trim() + '\n\n---\n');
+        included++;
+      }
+    } catch (e) {
+      parts.push('\n## ' + sec.label + '\n\n_(export failed for this section — regenerate and retry)_\n\n---\n');
+    }
+  });
+  if (!included) { showToast('Nothing to export — generate a campaign first'); return; }
+  const slug = (offer || niche || 'campaign').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+  _dlBlob('ptma-' + slug + '-' + date + '.md', 'text/markdown', parts.join(''));
+  showToast('Exported full campaign (' + included + ' sections) ✓');
+}
+
+// EXPORT 2: Calendar as CSV download
+function exportCalendarCSV() {
+  const rows = _buildCalendarRows();
+  if (!rows.length) { showToast('Calendar is empty — generate first'); return; }
+  const b = S.brief || {};
+  const date = new Date().toISOString().slice(0, 10);
+  const slug = ((b.offer || b.niche || 'campaign')).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+  const headers = ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM'];
+  const lines = [headers.map(_csvCell).join(',')];
+  rows.forEach(r => {
+    lines.push([
+      r.date,
+      r.campaignName || '',
+      r.phaseCode || '',
+      r.social.join(' | '),
+      r.email.join(' | '),
+      r.paidAds.join(' | '),
+      r.dm.join(' | ')
+    ].map(_csvCell).join(','));
+  });
+  _dlBlob('ptma-calendar-' + slug + '-' + date + '.csv', 'text/csv', lines.join('\n'));
+  showToast('Calendar CSV downloaded ✓');
+}
+
+// EXPORT 3: Calendar as TSV to clipboard (for Google Sheets paste)
+async function exportCalendarTSV() {
+  const rows = _buildCalendarRows();
+  if (!rows.length) { showToast('Calendar is empty — generate first'); return; }
+  const headers = ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM'];
+  const lines = [headers.join('\t')];
+  rows.forEach(r => {
+    lines.push([
+      r.date,
+      r.campaignName || '',
+      r.phaseCode || '',
+      r.social.join(' | '),
+      r.email.join(' | '),
+      r.paidAds.join(' | '),
+      r.dm.join(' | ')
+    ].map(_tsvCell).join('\t'));
+  });
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    showToast('Calendar copied — paste into Google Sheets (Ctrl/Cmd+V) ✓');
+  } catch (e) {
+    showToast('Copy failed — ' + e.message);
+  }
+}
+
+// EXPORT 4: Print / Save as PDF
+function exportPDF() {
+  // The print stylesheet (added in <style> block) hides tab bar, buttons, etc.
+  // User picks "Save as PDF" in the print dialog destination.
+  // First, make sure ALL panes the user has data for are visible during print.
+  document.body.classList.add('printing');
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => document.body.classList.remove('printing'), 500);
+  }, 100);
+}
+
+// Render the Export dropdown next to the Copy button.
+function renderExportButton() {
+  let wrap = document.getElementById('ptmaExportWrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'ptmaExportWrap';
+    wrap.style.cssText = 'position:fixed;bottom:24px;right:130px;z-index:9000';
+    wrap.innerHTML = '<button id="ptmaExportBtn" style="background:#0F1628;color:#fff;border:none;padding:12px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.18);transition:transform 0.15s">📦 Export ▾</button>' +
+      '<div id="ptmaExportMenu" style="display:none;position:absolute;bottom:48px;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 12px 28px rgba(15,22,40,0.18);padding:6px;min-width:280px">' +
+        '<button data-x="md" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📄 Whole campaign as Markdown</strong><div style="font-size:11px;color:#64748b;margin-top:2px">One .md file — paste into Notion / Google Docs / hand to a VA</div></button>' +
+        '<button data-x="csv" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📊 Calendar as CSV (download)</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Opens in Excel / Numbers / imports into Google Sheets</div></button>' +
+        '<button data-x="tsv" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📋 Calendar → Google Sheets (paste)</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Copies to clipboard — Cmd/Ctrl+V into any Sheets tab</div></button>' +
+        '<button data-x="pdf" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>🖨️ Print / Save as PDF</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Opens print dialog — pick "Save as PDF" as destination</div></button>' +
+      '</div>';
+    document.body.appendChild(wrap);
+    const menu = wrap.querySelector('#ptmaExportMenu');
+    const btn = wrap.querySelector('#ptmaExportBtn');
+    btn.onmouseover = () => btn.style.transform = 'translateY(-2px)';
+    btn.onmouseout = () => btn.style.transform = '';
+    btn.onclick = (ev) => { ev.stopPropagation(); menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; };
+    // Hover background on menu items
+    Array.from(menu.querySelectorAll('button')).forEach(b => {
+      b.onmouseover = () => b.style.background = '#F1F5F9';
+      b.onmouseout = () => b.style.background = 'none';
+      b.onclick = async (ev) => {
+        ev.stopPropagation();
+        menu.style.display = 'none';
+        const x = b.getAttribute('data-x');
+        if (x === 'md')  await exportWholeMarkdown();
+        if (x === 'csv') exportCalendarCSV();
+        if (x === 'tsv') await exportCalendarTSV();
+        if (x === 'pdf') exportPDF();
+      };
+    });
+    // Click outside closes
+    document.addEventListener('click', () => { menu.style.display = 'none'; });
+  }
+  // Show only on results tabs (same trigger as Copy button)
+  wrap.style.display = (S.tab >= 3 && S.tab <= 11) ? 'block' : 'none';
+}
+
 // TIER 2.2: Per-section "Regenerate this tab" button. Floating, sits left of
 // the Copy button. Re-runs just one tab's api() calls without redoing the
 // whole campaign (saves 4+ minutes and 6+ API calls when a coach just wants
@@ -4148,6 +4445,7 @@ const _origShowTab = window.showTab;
 window.showTab = function(n) {
   _origShowTab(n);
   renderCopyButton();
+  renderExportButton();
   renderRegenButton();
   if (n === 11) {
     try { rCalendar(); } catch (e) { console.warn('rCalendar failed:', e); }
@@ -4250,6 +4548,11 @@ function tryRestoreBanner() {
         rGymFloor(S.res.gymfloor);
         const t = document.getElementById('gymfloorTab'); if (t) t.style.display = '';
       }
+      // BUG FIX: sync optional tab visibility from opts (Meta + ManyChat)
+      try{
+        const _mc=document.getElementById('manychatTab'); if(_mc) _mc.style.display = S.opts.manychat ? '' : 'none';
+        const _mt=document.getElementById('metaTab'); if(_mt) _mt.style.display = S.opts.meta ? '' : 'none';
+      }catch(_e){}
       // Mark all step dots as done
       for (let i = 0; i < 6; i++) markStep(i, 'done');
       updateBadges();
