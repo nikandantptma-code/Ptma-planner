@@ -685,6 +685,10 @@ select option { background: #fff; }
             <div class="field"><label id="lbl_camp1_conv1">Conversion rate 1 (%)</label><input id="f_camp1_conv1" type="number" min="0" max="100" placeholder="optional"></div>
             <div class="field"><label id="lbl_camp1_conv2">Conversion rate 2 (%)</label><input id="f_camp1_conv2" type="number" min="0" max="100" placeholder="optional"></div>
           </div>
+          <div class="field" style="margin-top:8px"><label>Email mode</label><select id="f_camp1_emailMode">
+            <option value="nurture" selected>General nurture (sent on opt-in — dates vary per lead, NOT on Calendar)</option>
+            <option value="dated">Dated launch sequence (priority list / waitlist — appears on Calendar)</option>
+          </select></div>
           <div class="field" style="margin-top:8px"><label>Emails in THIS campaign's nurture sequence</label><select id="f_camp1_emailCount">
             <option value="">— Use global (from Email Options) —</option>
             <option value="3">3 emails</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
@@ -719,6 +723,10 @@ select option { background: #fff; }
             <div class="field"><label id="lbl_camp2_conv1">Conversion rate 1 (%)</label><input id="f_camp2_conv1" type="number" min="0" max="100" placeholder="optional"></div>
             <div class="field"><label id="lbl_camp2_conv2">Conversion rate 2 (%)</label><input id="f_camp2_conv2" type="number" min="0" max="100" placeholder="optional"></div>
           </div>
+          <div class="field" style="margin-top:8px"><label>Email mode</label><select id="f_camp2_emailMode">
+            <option value="nurture">General nurture (sent on opt-in — dates vary per lead, NOT on Calendar)</option>
+            <option value="dated" selected>Dated launch sequence (priority list / waitlist — appears on Calendar)</option>
+          </select></div>
           <div class="field" style="margin-top:8px"><label>Emails in THIS campaign's nurture sequence</label><select id="f_camp2_emailCount">
             <option value="">— Use global —</option>
             <option value="3">3 emails</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
@@ -753,6 +761,10 @@ select option { background: #fff; }
             <div class="field"><label id="lbl_camp3_conv1">Conversion rate 1 (%)</label><input id="f_camp3_conv1" type="number" min="0" max="100" placeholder="optional"></div>
             <div class="field"><label id="lbl_camp3_conv2">Conversion rate 2 (%)</label><input id="f_camp3_conv2" type="number" min="0" max="100" placeholder="optional"></div>
           </div>
+          <div class="field" style="margin-top:8px"><label>Email mode</label><select id="f_camp3_emailMode">
+            <option value="nurture">General nurture (sent on opt-in — dates vary per lead, NOT on Calendar)</option>
+            <option value="dated" selected>Dated launch sequence (priority list / waitlist — appears on Calendar)</option>
+          </select></div>
           <div class="field" style="margin-top:8px"><label>Emails in THIS campaign's nurture sequence</label><select id="f_camp3_emailCount">
             <option value="">— Use global —</option>
             <option value="3">3 emails</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
@@ -1089,8 +1101,9 @@ function bf() {
         const conv1      = document.getElementById('f_camp' + i + '_conv1')?.value || '';
         const conv2      = document.getElementById('f_camp' + i + '_conv2')?.value || '';
         const emailCount = document.getElementById('f_camp' + i + '_emailCount')?.value || '';
+        const emailMode  = document.getElementById('f_camp' + i + '_emailMode')?.value || (i === 1 ? 'nurture' : 'dated');
         // Always include up to `count`, even if blank, so prompts know slot exists
-        arr.push({ name, type, start, end, salesPath, conv1, conv2, emailCount });
+        arr.push({ name, type, start, end, salesPath, conv1, conv2, emailCount, emailMode });
       }
       return arr;
     })(),
@@ -1100,14 +1113,22 @@ function bf() {
 
 // TIER 1: dynamic conversion-rate labels based on the chosen sales path.
 // The same two input fields are reused, but renamed so the maths reads naturally.
+// TIER 2.6e: each path declares how many conversion fields it actually uses (1 or 2).
+// `direct` is a single-step funnel (visitor → buyer) — only one rate makes sense.
+// `application` now makes the landing-page entry point explicit in the label.
 const FUNNEL_LABELS = {
-  calls:       { c1: 'Lead → Consult booking rate (%)',       c2: 'Consult → Sale close rate (%)',     ph1: 'e.g. 30 — leads who book a consult', ph2: 'e.g. 50 — consults who buy',     mid: 'consults' },
-  direct:      { c1: 'Landing page visitor → Lead rate (%)',  c2: 'Lead → Sale conversion rate (%)',   ph1: 'e.g. 25 — page visitors who opt in', ph2: 'e.g. 15 — leads who buy direct', mid: 'leads' },
-  application: { c1: 'Lead → Application submission (%)',     c2: 'Application → Sale close (%)',       ph1: 'e.g. 40 — leads who apply',           ph2: 'e.g. 60 — applicants accepted who buy', mid: 'applications' },
-  gymfloor:    { c1: 'Gym floor conversation → Lead (%)',     c2: 'Lead → Sale conversion (%)',         ph1: 'e.g. 50 — chats that capture a lead', ph2: 'e.g. 25 — leads who become clients',   mid: 'qualified leads' },
-  email:       { c1: 'Email/DM open or reply rate (%)',       c2: 'Engaged contact → Sale rate (%)',    ph1: 'e.g. 35 — opens/replies',             ph2: 'e.g. 10 — engaged who buy',             mid: 'engaged contacts' },
-  mixed:       { c1: 'Step 1 conversion rate (%)',            c2: 'Step 2 conversion rate (%)',         ph1: 'first conversion step %',             ph2: 'second conversion step %',              mid: 'next-step contacts' }
+  calls:       { fields: 2, c1: 'Lead → Consult booking rate (%)',          c2: 'Consult → Sale close rate (%)',     ph1: 'e.g. 30 — leads who book a consult', ph2: 'e.g. 50 — consults who buy',     mid: 'consults' },
+  direct:      { fields: 1, c1: 'Landing page visitor → Buyer (%)',         c2: '',                                  ph1: 'e.g. 4 — page visitors who buy direct', ph2: '',                              mid: 'buyers' },
+  application: { fields: 2, c1: 'Landing page visitor → Application (%)',   c2: 'Application → Sale close (%)',      ph1: 'e.g. 20 — visitors who apply',        ph2: 'e.g. 60 — applicants accepted who buy', mid: 'applications' },
+  gymfloor:    { fields: 2, c1: 'Gym floor conversation → Lead (%)',        c2: 'Lead → Sale conversion (%)',        ph1: 'e.g. 50 — chats that capture a lead', ph2: 'e.g. 25 — leads who become clients',   mid: 'qualified leads' },
+  email:       { fields: 2, c1: 'Email/DM open or reply rate (%)',          c2: 'Engaged contact → Sale rate (%)',   ph1: 'e.g. 35 — opens/replies',             ph2: 'e.g. 10 — engaged who buy',             mid: 'engaged contacts' },
+  mixed:       { fields: 2, c1: 'Step 1 conversion rate (%)',               c2: 'Step 2 conversion rate (%)',        ph1: 'first conversion step %',             ph2: 'second conversion step %',              mid: 'next-step contacts' }
 };
+function setFunnelFieldVisibility(field2El, label2El, fields) {
+  // Show or hide the 2nd field block based on whether the path uses 2 fields or 1
+  const wrapper2 = field2El && field2El.closest('.field');
+  if (wrapper2) wrapper2.style.display = (fields >= 2 ? '' : 'none');
+}
 function updateFunnelLabels() {
   const sel = document.getElementById('f_salesPath');
   if (!sel) return;
@@ -1118,9 +1139,10 @@ function updateFunnelLabels() {
   const i1 = document.getElementById('f_convLeadConsult');
   const i2 = document.getElementById('f_convConsultClose');
   if (l1) l1.textContent = cfg.c1;
-  if (l2) l2.textContent = cfg.c2;
+  if (l2) l2.textContent = cfg.c2 || 'Conversion rate 2 (%)';
   if (i1) i1.placeholder = cfg.ph1;
-  if (i2) i2.placeholder = cfg.ph2;
+  if (i2) i2.placeholder = cfg.ph2 || '';
+  setFunnelFieldVisibility(i2, l2, cfg.fields || 2);
 }
 // Set initial labels on page load.
 if (document.readyState === 'loading') {
@@ -1425,6 +1447,7 @@ function restoreFormDraft() {
       setVal('f_camp' + n + '_conv1',      c.conv1);
       setVal('f_camp' + n + '_conv2',      c.conv2);
       setVal('f_camp' + n + '_emailCount', c.emailCount);
+      setVal('f_camp' + n + '_emailMode',  c.emailMode);
       if (typeof updateCampSalesLabels === 'function') updateCampSalesLabels(n);
     });
   }
@@ -1441,7 +1464,7 @@ function restoreFormDraft() {
   if (typeof updateFunnelLabels === 'function') updateFunnelLabels();
 }
 function wireFormAutoSave() {
-  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose','f_meta_lm','f_meta_feo','f_meta_core','f_meta_engagement','f_campaignCount','f_camp1_name','f_camp1_type','f_camp1_start','f_camp1_end','f_camp1_salesPath','f_camp1_conv1','f_camp1_conv2','f_camp1_emailCount','f_camp2_name','f_camp2_type','f_camp2_start','f_camp2_end','f_camp2_salesPath','f_camp2_conv1','f_camp2_conv2','f_camp2_emailCount','f_camp3_name','f_camp3_type','f_camp3_start','f_camp3_end','f_camp3_salesPath','f_camp3_conv1','f_camp3_conv2','f_camp3_emailCount'];
+  const ids = ['f_niche','f_offer','f_price','f_goal','f_ltv','f_salesPath','f_convLeadConsult','f_convConsultClose','f_obj','f_month','f_start','f_launch','f_chan_landing','f_chan_gymfloor','f_chan_social','f_chan_email','f_chan_dm','f_chan_paid','f_emailCount','f_emailDayZero','f_emailSamples','f_manychatPurpose','f_meta_lm','f_meta_feo','f_meta_core','f_meta_engagement','f_campaignCount','f_camp1_name','f_camp1_type','f_camp1_start','f_camp1_end','f_camp1_salesPath','f_camp1_conv1','f_camp1_conv2','f_camp1_emailCount','f_camp1_emailMode','f_camp2_name','f_camp2_type','f_camp2_start','f_camp2_end','f_camp2_salesPath','f_camp2_conv1','f_camp2_conv2','f_camp2_emailCount','f_camp2_emailMode','f_camp3_name','f_camp3_type','f_camp3_start','f_camp3_end','f_camp3_salesPath','f_camp3_conv1','f_camp3_conv2','f_camp3_emailCount','f_camp3_emailMode'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1542,20 +1565,25 @@ function deriveSubPhases(start, end) {
   return phases;
 }
 
-// TIER 2.6d: per-campaign sales-path conversion-rate labels (mirrors global updateFunnelLabels).
+// TIER 2.6d + 2.6e: per-campaign sales-path conversion-rate labels.
+// Also hides field 2 when the path is single-step (e.g. `direct`).
 function updateCampSalesLabels(i) {
   const sel = document.getElementById('f_camp' + i + '_salesPath');
   if (!sel) return;
-  const path = sel.value || 'calls';
-  const cfg = (typeof FUNNEL_LABELS !== 'undefined' ? FUNNEL_LABELS[path] : null) || { c1: 'Conversion rate 1 (%)', c2: 'Conversion rate 2 (%)', ph1: '', ph2: '' };
+  const path = sel.value || '';
+  const cfg = (path && typeof FUNNEL_LABELS !== 'undefined' ? FUNNEL_LABELS[path] : null) || { fields: 2, c1: 'Conversion rate 1 (%)', c2: 'Conversion rate 2 (%)', ph1: '', ph2: '' };
   const l1 = document.getElementById('lbl_camp' + i + '_conv1');
   const l2 = document.getElementById('lbl_camp' + i + '_conv2');
   const i1 = document.getElementById('f_camp' + i + '_conv1');
   const i2 = document.getElementById('f_camp' + i + '_conv2');
   if (l1) l1.textContent = path ? cfg.c1 : 'Conversion rate 1 (%)';
-  if (l2) l2.textContent = path ? cfg.c2 : 'Conversion rate 2 (%)';
+  if (l2) l2.textContent = (path && cfg.c2) ? cfg.c2 : 'Conversion rate 2 (%)';
   if (i1) i1.placeholder = path ? cfg.ph1 : 'optional';
-  if (i2) i2.placeholder = path ? cfg.ph2 : 'optional';
+  if (i2) i2.placeholder = (path && cfg.ph2) ? cfg.ph2 : 'optional';
+  // Hide field 2 for single-step paths (e.g. direct)
+  if (i2 && i2.closest('.field')) {
+    i2.closest('.field').style.display = (path && (cfg.fields === 1)) ? 'none' : '';
+  }
 }
 
 // TIER 2.6a: Show/hide campaign phase blocks based on the count dropdown.
@@ -2363,6 +2391,40 @@ function doCopy(id,text){navigator.clipboard.writeText(text.replace(/\\n/g,'\n')
 function rStrat(d){
   if(!d){document.getElementById('stratOut').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Strategy could not be generated</div><div class="empty-sub">Try regenerating</div></div>';return;}
   let h=stdBanner();
+
+  // TIER 2.6e: chained campaign overview at the top — only renders when 2+ campaigns set on Brief.
+  const briefB = S.brief || {};
+  const chain = (Array.isArray(briefB.campaigns) ? briefB.campaigns : []).filter(c => c && (c.name || c.start));
+  if (chain.length >= 2) {
+    const stageColor = { leadMagnet: 'var(--cyan)', feo: 'var(--gold)', core: 'var(--amber)', custom: 'var(--navy)' };
+    const stageLabel = { leadMagnet: 'Lead Magnet drive', feo: 'FEO drive', core: 'Core Offer drive', custom: 'Custom' };
+    h += '<div class="card card-cyan"><div class="section-label">Chained Campaign Overview</div>' +
+      '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">' + chain.length + ' connected campaigns. Each picks up where the previous left off, retargeting the warm/hot audience.</div>' +
+      '<div style="display:flex;flex-direction:column;gap:0;align-items:stretch">';
+    chain.forEach((c, i) => {
+      const col = stageColor[c.type] || 'var(--navy)';
+      const lbl = stageLabel[c.type] || 'Campaign';
+      const dur = (c.start && c.end) ? ' · ' + c.start + ' → ' + c.end : '';
+      h += '<div style="background:#fff;border:2px solid ' + col + ';border-left-width:6px;border-radius:10px;padding:14px 18px;box-shadow:0 2px 6px rgba(0,0,0,0.04)">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="background:' + col + ';color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">' + (i + 1) + '</span>' +
+        '<span style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:' + col + ';font-weight:700">' + lbl + '</span>' +
+        '<span style="font-size:11px;color:var(--textSub)">' + dur + '</span></div>' +
+        '<div style="font-size:15px;font-weight:600;color:var(--navy);margin-bottom:4px">' + (c.name || '(unnamed)') + '</div>' +
+        (c.emailCount ? '<div style="font-size:11px;color:var(--textMid)">' + c.emailCount + '-email sequence · ' : '<div style="font-size:11px;color:var(--textMid)">') +
+        (c.salesPath ? 'sales path: ' + ({calls:'sales calls', direct:'direct landing-page purchase', application:'application form', gymfloor:'gym floor', email:'email/DM sequence', mixed:'mixed'})[c.salesPath] : 'sales path: global default') +
+        '</div></div>';
+      if (i < chain.length - 1) {
+        h += '<div style="font-size:22px;color:var(--borderMid);line-height:1;padding:6px 0;text-align:center">↓</div>';
+      }
+    });
+    h += '</div>';
+    h += '<div style="margin-top:14px;padding:10px 14px;background:var(--card2);border-radius:8px;font-size:12px;color:var(--textMid);line-height:1.55">' +
+      '<strong>Strategy below applies to the FIRST campaign (' + (chain[0].name || 'Campaign 1') + ').</strong> ' +
+      'When you regenerate the Strategy tab, the model considers the full chain context but the WHY / pains / phases / KPIs anchor to Campaign 1. Use the Lead Gen, Email and Calendar tabs to see how the FEO and Core campaigns plug in.' +
+      '</div>';
+    h += '</div>';
+  }
+
   if(d.campaignName){
     const ct=`${d.campaignName}\n\n${d.whyStatement||''}\n\n${d.coreMessage||''}`;
     h+=`<div class="card card-cyan"><div class="output-row">${cp('st1',ct)}</div><div class="campaign-name">${d.campaignName}</div>${d.whyStatement?`<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:8px">${tip('WHY Statement', 'WHY')}: ${d.whyStatement}</p>`:''} ${d.coreMessage?`<p style="font-size:15px;font-weight:500;color:var(--navy);line-height:1.6">${d.coreMessage}</p>`:''}</div>`;
@@ -2459,9 +2521,35 @@ function rStrat(d){
 }
 
 // ── RENDER LEAD GEN ────────────────────────────────────────────────────────
+// TIER 2.6e: Click-to-swap a lead magnet / FEO option. Updates S.res.lead in place,
+// re-renders the Lead Gen tab, and shows a top-of-tab banner reminding the coach to
+// regenerate dependent tabs (Meta Ads / Email / Content / Calendar) for the new
+// name/format to cascade through.
+window.swapLeadOption = function(offerKey, kind, value) {
+  if (!S.res || !S.res.lead || !S.res.lead[offerKey]) return;
+  const offer = S.res.lead[offerKey];
+  if (kind === 'name')   offer.name = value;
+  if (kind === 'format') offer.format = value;
+  if (kind === 'length') offer.length = value;
+  // Mark which tabs are now stale (their content references the OLD value)
+  S.leadGenDirty = true;
+  saveCampaign(S.brief || {});
+  rLead(S.res.lead);
+  showToast((kind === 'name' ? 'Name' : kind === 'format' ? 'Format' : 'Length') + ' swapped — regenerate Meta Ads / Email / Content to cascade');
+};
+
 function rLead(d){
   if(!d) return;
   let h=stdBanner();
+  // TIER 2.6e: dirty banner — show when the coach swapped a name/format/length
+  // but hasn't regenerated dependent tabs yet.
+  if (S.leadGenDirty) {
+    h += '<div style="padding:14px 18px;background:var(--amberLight);border:1px solid var(--amberBorder);border-radius:10px;margin-bottom:14px;font-size:13px;color:var(--amber);display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+      '<span style="font-size:18px">⚠️</span>' +
+      '<span style="flex:1"><strong>You\'ve swapped a name / format / length.</strong> The Meta Ads, Email Sequence, Content Plan and Calendar still reference the OLD value. Regenerate those tabs to cascade the change through.</span>' +
+      '<button onclick="S.leadGenDirty=false;rLead(S.res.lead)" style="background:transparent;color:var(--amber);border:1px solid var(--amber);padding:6px 12px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Dismiss</button>' +
+      '</div>';
+  }
 
   // TIER 2.2: landing page block renderer — paste-ready copy for Carrd / Webflow / Wix / Google Doc.
   // Shows a visual mock-up of the page so coaches can SEE what they'll build.
@@ -2512,19 +2600,31 @@ function rLead(d){
     </details>`;
   };
 
-  // TIER 2.6d: render the 3 alternative options (name / format / length) below the primary
-  const renderOptions = (offer, label) => {
-    const names   = (offer.nameOptions   || []).filter(x => x && x !== offer.name);
-    const formats = (offer.formatOptions || []).filter(x => x && x !== offer.format);
-    const lengths = (offer.lengthOptions || []).filter(Boolean);
+  // TIER 2.6e: CLICKABLE alternative options. Clicking swaps the chosen value in S.res.lead,
+  // re-renders the Lead Gen tab, and shows a banner reminding the coach to regenerate
+  // dependent tabs (Meta Ads, Email, Content) for the new name to cascade through.
+  const renderOptions = (offerKey, offer, label) => {
+    const names   = offer.nameOptions   || [];
+    const formats = offer.formatOptions || [];
+    const lengths = offer.lengthOptions || [];
     if (!names.length && !formats.length && !lengths.length) return '';
-    let html = '<details style="margin-top:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">' +
-      '<summary style="cursor:pointer;padding:10px 14px;background:var(--card2);font-size:12px;font-weight:600;color:var(--navy);user-select:none">🔀 Other ' + label + ' options to consider</summary>' +
+    let html = '<details open style="margin-top:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">' +
+      '<summary style="cursor:pointer;padding:10px 14px;background:var(--card2);font-size:12px;font-weight:600;color:var(--navy);user-select:none">🔀 ' + label + ' options — click to swap</summary>' +
       '<div style="padding:14px 16px;background:#fff">';
-    if (names.length)   html += '<div class="kv"><div class="k">Alternative names</div><div class="v">' + names.map(n => '<span style="display:inline-block;padding:3px 9px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:999px;font-size:11px;color:var(--teal);margin:2px 4px 2px 0">' + n + '</span>').join('') + '</div></div>';
-    if (formats.length) html += '<div class="kv"><div class="k">Alternative formats</div><div class="v">' + formats.map(f => '<span style="display:inline-block;padding:3px 9px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:999px;font-size:11px;color:var(--gold);margin:2px 4px 2px 0">' + f + '</span>').join('') + '</div></div>';
-    if (lengths.length) html += '<div class="kv"><div class="k">Length options</div><div class="v">' + lengths.map(l => '<span style="display:inline-block;padding:3px 9px;background:var(--card2);border:1px solid var(--border);border-radius:999px;font-size:11px;color:var(--textMid);margin:2px 4px 2px 0">' + l + '</span>').join('') + '</div></div>';
-    html += '<div style="font-size:11px;color:var(--textSub);margin-top:8px;font-style:italic">To use one of these alternatives, type it into the matching Campaign name on the Brief and hit ↻ Regenerate tab.</div></div></details>';
+    const pillBtn = (val, kind, isActive) => {
+      const safe = (val || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const colors = {
+        name: { active: 'background:var(--teal);color:#fff;border:1px solid var(--teal)', inactive: 'background:var(--cyanLight);color:var(--teal);border:1px solid var(--cyanBorder)' },
+        format: { active: 'background:var(--gold);color:#fff;border:1px solid var(--gold)', inactive: 'background:var(--goldLight);color:var(--gold);border:1px solid var(--goldBorder)' },
+        length: { active: 'background:var(--navy);color:#fff;border:1px solid var(--navy)', inactive: 'background:var(--card2);color:var(--textMid);border:1px solid var(--border)' }
+      }[kind];
+      const style = isActive ? colors.active : colors.inactive;
+      return '<button onclick="swapLeadOption(\'' + offerKey + '\', \'' + kind + '\', \'' + safe + '\')" style="display:inline-block;padding:5px 11px;border-radius:999px;font-size:11px;font-family:inherit;margin:3px 4px 3px 0;cursor:pointer;font-weight:' + (isActive?'700':'500') + ';' + style + '">' + (isActive?'✓ ':'') + val + '</button>';
+    };
+    if (names.length)   html += '<div class="kv"><div class="k">Name</div><div class="v">' + names.filter(Boolean).map(n => pillBtn(n, 'name', n === offer.name)).join('') + '</div></div>';
+    if (formats.length) html += '<div class="kv"><div class="k">Format</div><div class="v">' + formats.filter(Boolean).map(f => pillBtn(f, 'format', f === offer.format)).join('') + '</div></div>';
+    if (lengths.length) html += '<div class="kv"><div class="k">Length</div><div class="v">' + lengths.filter(Boolean).map(l => pillBtn(l, 'length', l === offer.length)).join('') + '</div></div>';
+    html += '<div style="font-size:11px;color:var(--textSub);margin-top:8px;font-style:italic">Click any option to swap. The Lead Gen card updates instantly. After swapping, regenerate Meta Ads / Email Sequence / Content Plan so those tabs adopt the new name.</div></div></details>';
     return html;
   };
 
@@ -2533,13 +2633,13 @@ function rLead(d){
     const isPass=(lm.valueCheck||'').toLowerCase().startsWith('yes');
     const whyBlock = lm.whyThisFormat ? `<div style="padding:10px 14px;background:var(--cyanLight);border:1px solid var(--cyanBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--teal)"><strong>Why this format:</strong> ${lm.whyThisFormat}</div>` : '';
     const forCampLabel = lm.forCampaign ? `<div style="font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:var(--textSub);font-weight:700;margin-bottom:6px">For Campaign 1 · ${lm.forCampaign}</div>` : '';
-    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — ${tip('Lead Magnet')}</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div>${forCampLabel}<div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderOptions(lm, 'lead magnet')}${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)', 'the lead magnet')}</div>`;
+    h+=`<div class="card card-green"><div class="output-row"><span class="badge badge-green">Attention Offer — ${tip('Lead Magnet')}</span>${cp('lm1',Object.values(lm).filter(x => typeof x !== 'object').join('\n'))}</div>${forCampLabel}<div class="card-title">${lm.name}</div><p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">"${lm.hook}"</p>${[['Format',lm.format],['Pain solved',lm.pain],['Quick win',lm.outcome],['Bridge to FEO',lm.bridge]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}<div style="padding:10px 14px;background:${isPass?'var(--greenLight)':'var(--amberLight)'};border:1px solid ${isPass?'var(--greenBorder)':'var(--amberBorder)'};border-radius:8px;margin-top:8px;font-size:12px;color:${isPass?'var(--green)':'var(--amber)'}">Value check: ${lm.valueCheck}</div>${renderOptions('leadMagnet', lm, 'Lead Magnet')}${renderLandingPage(lm.landingPage, 'var(--green)', 'lm_lp', 'var(--green)', 'the lead magnet')}</div>`;
   }
   if(d.feo){
     const feo=d.feo;
     const whyBlock = feo.whyThisFormat ? `<div style="padding:10px 14px;background:var(--goldLight);border:1px solid var(--goldBorder);border-radius:8px;margin-top:12px;font-size:12px;color:var(--gold)"><strong>Why this format:</strong> ${feo.whyThisFormat}</div>` : '';
     const forCampLabel = feo.forCampaign ? `<div style="font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:var(--textSub);font-weight:700;margin-bottom:6px">For Campaign 2 · ${feo.forCampaign}</div>` : '';
-    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — ${tip('FEO')}</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div>${forCampLabel}<div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderOptions(feo, 'FEO')}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)', 'the FEO')}</div>`;
+    h+=`<div class="card card-gold"><div class="output-row"><span class="badge badge-gold">Conversion Offer — ${tip('FEO')}</span>${cp('feo1',Object.values(feo).filter(x => typeof x !== 'object').join('\n'))}</div>${forCampLabel}<div class="card-title">${feo.name}</div>${[['Format',feo.format],['Price',feo.price],['Duration',feo.duration],['Pain addressed',feo.pain],['Measurable outcome',feo.outcome],['Decision moment',feo.decisionMoment]].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v||''}</div></div>`).join('')}${whyBlock}${feo.valueEquation?`<p style="font-size:11px;color:var(--textSub);margin-top:10px">${feo.valueEquation}</p>`:''}${renderOptions('feo', feo, 'FEO')}${renderLandingPage(feo.landingPage, 'var(--gold)', 'feo_lp', 'var(--navy)', 'the FEO')}</div>`;
   }
   if(d.reactivationOption){
     const r=d.reactivationOption;
@@ -3078,16 +3178,31 @@ function rCalendar() {
     });
   });
 
-  // 2c. Aggregate Email Sequence — use Day 0/1/N spacing from Email 1 send date
+  // 2c. Aggregate Email Sequence — TIER 2.6e: only render emails for campaigns where
+  // emailMode === 'dated' (priority list / waitlist style). Skip 'nurture' mode emails
+  // since their dates vary per opt-in. Group by campaignIndex, anchor each group to
+  // ITS OWN campaign's start date.
   if (S.res.email && S.res.email.sequence) {
-    // Determine Email 1 send date: launch_date OR campaign 1 start
-    const anchorDate = (camps[0] && camps[0].start) || b.start;
     const isDay0 = b.emailDayZero !== false;
-    if (anchorDate) {
+    const spacing = [0, 2, 4, 7, 9, 11, 13, 15, 17, 19];
+    // Group emails by campaignIndex (set by generateEmailBatches in 2.6d)
+    const emailGroups = {};
+    S.res.email.sequence.forEach((em, i) => {
+      const ci = em.campaignIndex || (camps.length ? 1 : 0);
+      if (!emailGroups[ci]) emailGroups[ci] = [];
+      emailGroups[ci].push(em);
+    });
+    Object.keys(emailGroups).forEach(ciKey => {
+      const ci = parseInt(ciKey) || 0;
+      const camp = ci > 0 ? camps[ci - 1] : null;
+      // Skip if this campaign's email mode is 'nurture' (dates vary per lead)
+      if (camp && camp.emailMode === 'nurture') return;
+      // For chained campaigns without explicit mode, default Campaign 1 to nurture, others to dated
+      if (camp && !camp.emailMode && camp.type === 'leadMagnet') return;
+      const anchorDate = camp ? camp.start : ((camps[0] && camps[0].start) || b.start);
+      if (!anchorDate) return;
       const baseDate = new Date(anchorDate);
-      // Standard nurture spacing: 0, 2, 4, 7, 9, 11, 13, 15, 17, 19
-      const spacing = [0, 2, 4, 7, 9, 11, 13, 15, 17, 19];
-      S.res.email.sequence.forEach((em, i) => {
+      emailGroups[ciKey].forEach((em, i) => {
         const offset = spacing[i] != null ? spacing[i] : i * 2;
         const realOffset = isDay0 ? offset : offset + 1;
         const sendDate = new Date(baseDate);
@@ -3099,11 +3214,11 @@ function rCalendar() {
         day.items.push({
           channel: 'Email',
           kind: 'email',
-          summary: 'Email ' + (em.emailNum || (i+1)) + ' — ' + (em.subjectLine || em.purpose || 'Subject'),
+          summary: 'Email ' + (em.emailNum || (i+1)) + (em.forCampaign ? ' (' + em.forCampaign + ')' : '') + ' — ' + (em.subjectLine || em.purpose || 'Subject'),
           full: 'Subject: ' + (em.subjectLine || '') + '\n\n' + (em.hook || '') + '\n\n' + ((em.bodyOutline || []).join('\n')) + (em.cta ? '\n\nCTA: ' + em.cta : '')
         });
       });
-    }
+    });
   }
 
   // 2d. Aggregate Meta ad flights — each ad gets flight date range
@@ -3960,12 +4075,13 @@ async function regenerateCurrentTab() {
       if (!r) throw new Error('Strategy regenerate failed — try again.');
       rStrat(r); S.res.strat = r;
     } else if (tab === 4) {
-      const r = await api(sys, pLead(b), 3500);
+      const r = await api(sys, pLead(b), 8500);
       if (!r) throw new Error('Lead Gen regenerate failed — try again.');
       rLead(r); S.res.lead = r;
+      S.leadGenDirty = false;
     } else if (tab === 5) {
-      const r1 = await api(sys, pContent(b, '1-2'), 5000);
-      const r2 = await api(sys, pContent(b, '3-4'), 5000);
+      const r1 = await api(sys, pContent(b, '1-2'), 8000);
+      const r2 = await api(sys, pContent(b, '3-4'), 8000);
       const r = mergeContent(r1, r2);
       if (!r) throw new Error('Content Plan regenerate failed — try again.');
       rContent(r); S.res.content = r;
