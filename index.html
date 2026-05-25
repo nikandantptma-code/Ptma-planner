@@ -1848,7 +1848,7 @@ async function generate() {
       }
       if (wantsGymFloor) {
         showGenPill('Writing your gym-floor 4-step process…', t0);
-        const gf = await api(sys, pGymFloor(b), 4500);
+        const gf = await api(sys, pGymFloor(b), 7500);
         if (gf) { rGymFloor(gf); S.res.gymfloor = gf; saveCampaign(b); }
         document.getElementById('gymfloorTab').style.display = '';
       }
@@ -2407,8 +2407,27 @@ function pGymFloor(b){
     '    "openQuestions": "target number of step-3 conversations per week",\n' +
     '    "leadCaptures": "target number of step-4 captures per week"\n' +
     '  },\n' +
+    '  "conversionMenu": [\n' +
+    '    {\n' +
+    '      "name": "specific named offer — e.g. \\"Post-Baby Posture & Core Check (15 min)\\" / \\"60-Min Lower-Back Pain Workshop (Saturday morning)\\" / \\"5-Day Lunchtime Strength Challenge\\"",\n' +
+    '      "type": "one of: trial / group-trial / workshop / seminar / challenge / technique-check / health-check / MOT / consultation / taster-session / goal-setting / Q&A",\n' +
+    '      "duration": "how long it takes from the members perspective — e.g. \\"15 min on the floor\\" / \\"45 min booked slot\\" / \\"5 days at home, 10 min/day\\"",\n' +
+    '      "price": "\\"Free\\" / \\"£X\\" / \\"Member benefit (no charge)\\" / \\"£X for non-members\\"",\n' +
+    '      "bestFor": "the type of gym member this is sized for — BE SPECIFIC TO THIS NICHE, not generic all members",\n' +
+    '      "floorScript": "verbatim 1-2 sentences the coach uses during a Step 3 or Step 4 conversation to actually offer it — sounds like real spoken English, no jargon",\n' +
+    '      "funnelRole": "what this offer feeds into — one of: \\"Standalone — pays for itself\\" / \\"Feeds into FEO (£X paid first step)\\" / \\"Feeds into core-offer discovery call\\" / \\"Builds email list for nurture sequence\\" / \\"Re-engages lapsed members\\"",\n' +
+    '      "coachPrep": "what the coach brings / sets up before delivering it — equipment, paperwork, takeaway card, room booking, etc."\n' +
+    '    }\n' +
+    '  ],\n' +
     '  "implementationTips": ["", "", ""]\n' +
-    '}';
+    '}\n\n' +
+    'IMPORTANT for conversionMenu: generate 5-7 items (NOT just one — the JSON above shows the SHAPE of each item). Cover a real coachs actual range:\n' +
+    '- At least ONE low-commitment item the coach can deliver on-the-spot during a floor conversation (e.g. 10-15 min technique correction, posture screen, body comp check).\n' +
+    '- At least ONE booked-slot item that requires a calendar booking (e.g. 45-min PT trial, 30-min health MOT, goal-setting consultation).\n' +
+    '- At least ONE group item the coach can run with multiple members at once (e.g. workshop, seminar, in-gym challenge).\n' +
+    '- At least ONE item suitable for NEW members and at least one for EXISTING or LAPSED members.\n' +
+    '- Each name must sound branded and specific, not generic. "Free PT session" is generic; "45-Min Strength Foundations Trial — first session free" is specific.\n' +
+    '- Each floorScript must read like spoken English a coach would actually say, no marketing copy.';
 }
 // ── RENDER HELPERS ─────────────────────────────────────────────────────────
 function stdBanner(){return `<div class="standard-banner"><div class="mark">⚡</div><div><div class="title">Generated to The PTMA Standard</div><div class="sub">Hormozi · Jeff Walker · StoryBrand · Sinek · Vaynerchuk · Brunson · Luke Johnson · Simon Booth · FMA · James Smith</div></div></div>`;}
@@ -3520,6 +3539,30 @@ function rGymFloor(d) {
     h += stepCard(4, 'var(--gold)', 'Lead Gen Tool', body);
   }
 
+  // TIER 2.8: Conversion Menu — 5-7 named, scoped, scripted offers to pull from during Step 3/4
+  if (d.conversionMenu && d.conversionMenu.length) {
+    h += '<div class="card card-cyan"><div class="section-label">Gym Floor Conversion Menu</div>';
+    h += '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">' + d.conversionMenu.filter(Boolean).length + ' specific offers you can pull from during a Step 3 or Step 4 conversation. Each is sized to fit naturally inside a gym-floor exchange and tells you where it feeds in your funnel.</div>';
+    d.conversionMenu.filter(Boolean).forEach((c, i) => {
+      h += '<div style="background:#fff;border:1px solid var(--border);border-left:4px solid var(--cyan);border-radius:8px;padding:14px 16px;margin-bottom:10px">';
+      h += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap">';
+      h += '<span style="font-size:15px;font-weight:700;color:var(--navy)">' + (i+1) + '. ' + (c.name || '(unnamed offer)') + '</span>';
+      if (c.type) h += '<span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;background:var(--cyanLight);color:var(--teal);padding:2px 8px;border-radius:4px;font-weight:600">' + c.type + '</span>';
+      h += '</div>';
+      const meta = [c.duration, c.price].filter(Boolean).join(' · ');
+      if (meta) h += '<div style="font-size:12px;color:var(--textMid);margin-bottom:8px">' + meta + '</div>';
+      if (c.bestFor) h += '<div class="kv"><div class="k">Best for</div><div class="v">' + c.bestFor + '</div></div>';
+      if (c.floorScript) {
+        h += '<div style="margin-top:8px"><div class="section-label" style="font-size:10px;margin-bottom:4px">Floor script</div>';
+        h += '<div class="dm-bubble">' + c.floorScript + '</div></div>';
+      }
+      if (c.funnelRole) h += '<div class="kv" style="margin-top:8px"><div class="k">Funnel role</div><div class="v">' + c.funnelRole + '</div></div>';
+      if (c.coachPrep) h += '<div class="kv"><div class="k">Coach prep</div><div class="v">' + c.coachPrep + '</div></div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+
   // Weekly targets
   if (d.weeklyTargets) {
     const w = d.weeklyTargets;
@@ -4031,6 +4074,20 @@ function mdGymFloor(d) {
     if (s.deliveryMethod) m += '- **Delivery method:** ' + ss(s.deliveryMethod) + '\n';
     if (s.followUpDM) m += '\n**Next-day follow-up DM:**\n> ' + ss(s.followUpDM).replace(/\n/g, '\n> ') + '\n\n';
   }
+  if (d.conversionMenu?.length) {
+    m += '## Gym Floor Conversion Menu\n\n';
+    m += '_' + d.conversionMenu.filter(Boolean).length + ' specific offers to pull from during a Step 3 or Step 4 conversation._\n\n';
+    d.conversionMenu.filter(Boolean).forEach((c, i) => {
+      m += '### ' + (i+1) + '. ' + ss(c.name || '(unnamed offer)') + (c.type ? ' _(' + ss(c.type) + ')_' : '') + '\n\n';
+      const meta = [c.duration, c.price].filter(Boolean).map(ss).join(' · ');
+      if (meta) m += '_' + meta + '_\n\n';
+      if (c.bestFor) m += '- **Best for:** ' + ss(c.bestFor) + '\n';
+      if (c.floorScript) m += '\n**Floor script:**\n> ' + ss(c.floorScript).replace(/\n/g, '\n> ') + '\n\n';
+      if (c.funnelRole) m += '- **Funnel role:** ' + ss(c.funnelRole) + '\n';
+      if (c.coachPrep) m += '- **Coach prep:** ' + ss(c.coachPrep) + '\n';
+      m += '\n';
+    });
+  }
   if (d.weeklyTargets) {
     const w = d.weeklyTargets;
     m += '## Weekly Targets\n\n';
@@ -4399,7 +4456,7 @@ async function regenerateCurrentTab() {
       if (!r) throw new Error('Meta Ads regenerate failed — try again.');
       rMeta(r, b); S.res.meta = r;
     } else if (tab === 10) {
-      const r = await api(sys, pGymFloor(b), 4500);
+      const r = await api(sys, pGymFloor(b), 7500);
       if (!r) throw new Error('Gym Floor regenerate failed — try again.');
       rGymFloor(r); S.res.gymfloor = r;
     } else {
