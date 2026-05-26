@@ -3243,10 +3243,10 @@ function rCalendar() {
     Object.keys(emailGroups).forEach(ciKey => {
       const ci = parseInt(ciKey) || 0;
       const camp = ci > 0 ? camps[ci - 1] : null;
-      // Skip if this campaign's email mode is 'nurture' (dates vary per lead)
+      // Skip ONLY if this campaign's email mode is explicitly set to 'nurture'
+      // (in which case dates vary per opt-in and shouldn't be calendared).
+      // Default behaviour: show emails on the Calendar so coaches can see them.
       if (camp && camp.emailMode === 'nurture') return;
-      // For chained campaigns without explicit mode, default Campaign 1 to nurture, others to dated
-      if (camp && !camp.emailMode && camp.type === 'leadMagnet') return;
       const anchorDate = camp ? camp.start : ((camps[0] && camps[0].start) || b.start);
       if (!anchorDate) return;
       const baseDate = new Date(anchorDate);
@@ -3281,15 +3281,27 @@ function rCalendar() {
     const flightEnd   = b.launch || (camps[camps.length-1] && camps[camps.length-1].end);
     if (flightStart && flightEnd) {
       adsToFlight.forEach(a => {
-        // Only mark the start date as the "launch" marker — too noisy to repeat every day
-        const meta = phaseFor(flightStart);
-        const day = ensure(flightStart, meta.campIdx, meta.phaseCode, meta.campaignName);
-        if (day) day.items.push({
+        // Mark the START of the flight ("launch" marker).
+        const metaS = phaseFor(flightStart);
+        const dayS = ensure(flightStart, metaS.campIdx, metaS.phaseCode, metaS.campaignName);
+        if (dayS) dayS.items.push({
           channel: 'Paid Ads',
           kind: 'ad-flight',
-          summary: '🚀 ' + a.label + ' flight begins (runs through ' + flightEnd + ')',
+          summary: '🚀 ' + a.label + ' flight BEGINS (runs through ' + flightEnd + ')',
           full: (a.ad.primaryText || '') + '\n\nHeadline: ' + (a.ad.headline || '') + '\nCTA: ' + (a.ad.ctaButton || '')
         });
+        // Mark the END of the flight too, so coaches see when each ad pauses.
+        // Skip if start === end (single-day flight, one marker is enough).
+        if (flightEnd && flightEnd !== flightStart) {
+          const metaE = phaseFor(flightEnd);
+          const dayE = ensure(flightEnd, metaE.campIdx, metaE.phaseCode, metaE.campaignName);
+          if (dayE) dayE.items.push({
+            channel: 'Paid Ads',
+            kind: 'ad-flight',
+            summary: '🏁 ' + a.label + ' flight ENDS (review performance + decide next step)',
+            full: 'Ad ran from ' + flightStart + ' to ' + flightEnd + '. Pull metrics from Ads Manager: CPL, conversions, ROAS.'
+          });
+        }
       });
     }
   }
@@ -3300,6 +3312,31 @@ function rCalendar() {
     const meta = phaseFor(anchor);
     const day = ensure(anchor, meta.campIdx, meta.phaseCode, meta.campaignName);
     if (day) day.items.push({ channel: 'DM', kind: 'dm-scripts', summary: '💬 DM scripts now active (see DM Scripts tab)', full: 'Welcome DM, Story Reply, Post Engagement, Inbound Inquiry, Lead Ad Reply, Reactivation — all live from this date.' });
+  }
+
+  // 2f. Aggregate Gym Floor — anchor the 4-step process to the campaign start.
+  // S.res.gymfloor is a playbook (philosophy + 4 steps), not date-bound, so we
+  // mark "Gym Floor process active" on the start date and surface each step's
+  // headline content in the cell so coaches see what they're actually doing.
+  if (S.res.gymfloor && (b.start || (camps[0] && camps[0].start))) {
+    const gf = S.res.gymfloor;
+    const anchor = b.start || camps[0].start;
+    const meta = phaseFor(anchor);
+    const day = ensure(anchor, meta.campIdx, meta.phaseCode, meta.campaignName);
+    if (day) {
+      const fullParts = [];
+      if (gf.philosophy) fullParts.push('Why it works: ' + gf.philosophy);
+      if (gf.step1_meetGreet && gf.step1_meetGreet.purpose)        fullParts.push('Step 1 — Meet & Greet: ' + gf.step1_meetGreet.purpose);
+      if (gf.step2_approachIntro && gf.step2_approachIntro.purpose) fullParts.push('Step 2 — Approach + Intro: ' + gf.step2_approachIntro.purpose);
+      if (gf.step3_openQuestion && gf.step3_openQuestion.primaryQuestion) fullParts.push('Step 3 — Open Question: "' + gf.step3_openQuestion.primaryQuestion + '"');
+      if (gf.step4_leadGenTool && gf.step4_leadGenTool.introScript) fullParts.push('Step 4 — Lead Gen Tool: ' + gf.step4_leadGenTool.introScript);
+      day.items.push({
+        channel: 'Gym Floor',
+        kind: 'gym-floor',
+        summary: '🏋️ Gym Floor 4-step process active (see Gym Floor tab)',
+        full: fullParts.join('\n\n')
+      });
+    }
   }
 
   // 3. Render — sort by date
@@ -3316,7 +3353,7 @@ function rCalendar() {
   if (ch.email)     channelColumns.push({ key: 'Email',    label: '📧 Email',    match: (it) => it.kind === 'email' });
   if (ch.paid)      channelColumns.push({ key: 'Paid Ads', label: '💰 Paid Ads', match: (it) => it.kind === 'ad-flight' });
   if (ch.dm)        channelColumns.push({ key: 'DM',       label: '💬 DM',       match: (it) => it.kind === 'dm-scripts' });
-  if (ch.gymfloor)  channelColumns.push({ key: 'Gym',      label: '🏋️ Gym Floor', match: (it) => it.kind === 'gym-floor' });
+  if (ch.gymfloor || b.salesPath === 'gymfloor') channelColumns.push({ key: 'Gym',      label: '🏋️ Gym Floor', match: (it) => it.kind === 'gym-floor' });
   // Always have at least one column
   if (channelColumns.length === 0) channelColumns.push({ key: 'All', label: 'All', match: () => true });
 
