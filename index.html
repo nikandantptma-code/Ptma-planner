@@ -503,7 +503,12 @@ select option { background: #fff; }
     display: none !important;
   }
   /* Force-show every pane that has data, regardless of S.tab */
-  body.printing .pane { display: block !important; page-break-after: always; }
+  /* FIX 2026-05-28: actual class is .page (not .pane). Force ONLY populated pages visible during print. */
+  body.printing .page[data-print="yes"] { display: block !important; page-break-after: always; }
+  body.printing .page[data-print="no"] { display: none !important; }
+  /* Pages not tagged at all — fall back to the original active-only behaviour */
+  body.printing .page:not([data-print]) { display: none !important; }
+  body.printing .page.active:not([data-print]) { display: block !important; }
   body { background: #fff !important; color: #000 !important; }
   .card, .card-cyan, .card-gold { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
   h1, h2, h3, h4 { page-break-after: avoid; }
@@ -4999,14 +5004,40 @@ async function exportAllTabsTSV() {
 
 // EXPORT 4: Print / Save as PDF
 function exportPDF() {
-  // The print stylesheet (added in <style> block) hides tab bar, buttons, etc.
-  // User picks "Save as PDF" in the print dialog destination.
-  // First, make sure ALL panes the user has data for are visible during print.
+  // FIX 2026-05-28: previous version targeted '.pane' but the actual class is '.page'.
+  // We now tag each results page with data-print="yes|no" so only populated tabs print.
+  // The user then picks "Save as PDF" in the print dialog destination.
+  const pages = document.querySelectorAll('.page');
+  // pages[0]=Client Data, [1]=Coach Voice, [2]=Brief, then [3..11]=results tabs in order
+  const contentKey = {3:'strat', 4:'lead', 5:'content', 6:'email', 7:'dm', 8:'manychat', 9:'meta', 10:'gymfloor', 11:'_cal'};
+  let anyPopulated = false;
+  pages.forEach((p, i) => {
+    if (!contentKey.hasOwnProperty(i)) {
+      // Input tabs — never include in PDF
+      p.setAttribute('data-print', 'no');
+      return;
+    }
+    const k = contentKey[i];
+    const has = (k === '_cal')
+      ? !!(S.res.strat || S.res.content || S.res.email)  // Calendar prints if anything else is populated
+      : !!S.res[k];
+    p.setAttribute('data-print', has ? 'yes' : 'no');
+    if (has) anyPopulated = true;
+  });
+  if (!anyPopulated) {
+    showToast('Nothing to print yet — generate a campaign first');
+    // Clean up the data-print attrs we just set
+    pages.forEach(p => p.removeAttribute('data-print'));
+    return;
+  }
   document.body.classList.add('printing');
   setTimeout(() => {
     window.print();
-    setTimeout(() => document.body.classList.remove('printing'), 500);
-  }, 100);
+    setTimeout(() => {
+      document.body.classList.remove('printing');
+      pages.forEach(p => p.removeAttribute('data-print'));
+    }, 800);
+  }, 150);
 }
 
 // Render the Export dropdown next to the Copy button.
@@ -5130,8 +5161,8 @@ function renderLibraryButton() {
     document.body.appendChild(btn);
   }
   btn.textContent = '📚 Library' + (count ? ' (' + count + ')' : '');
-  // Show on results tabs OR on the Brief tab (so coaches can load before generating)
-  btn.style.display = (S.tab >= 2 && S.tab <= 11) ? 'block' : 'none';
+  // FIX 2026-05-28: visible on ALL tabs so coaches can load saved campaigns from the moment they open the tool.
+  btn.style.display = 'block';
 }
 
 function openLibraryPanel() {
@@ -5376,6 +5407,15 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', tryRestoreBanner);
 } else {
   tryRestoreBanner();
+}
+
+// FIX 2026-05-28: render the Library button immediately so it's visible from page load
+// (previously only rendered on the first tab switch).
+function _bootLibraryButton() { try { renderLibraryButton(); } catch (e) { console.warn('Library button boot:', e.message); } }
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _bootLibraryButton);
+} else {
+  setTimeout(_bootLibraryButton, 0);
 }
 </script>
 
