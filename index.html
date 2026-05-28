@@ -2448,27 +2448,58 @@ function pGymFloor(b){
     '    "openQuestions": "target number of step-3 conversations per week",\n' +
     '    "leadCaptures": "target number of step-4 captures per week"\n' +
     '  },\n' +
+    '  "nicheCategory": "your read of the niche — one of: beginners / returning-to-fitness / hybrid-or-performance / strength-focused / endurance-or-runners / post-natal-or-pre-natal / 40-plus-or-older-adults / body-composition-or-weight-loss / rehab-or-post-injury / general-fitness — pick the closest fit and append a short qualifier if helpful (e.g. \\"post-natal-or-pre-natal, 6-18 months postpartum\\")",\n' +
     '  "conversionMenu": [\n' +
     '    {\n' +
+    '      "category": "ONE OF: \\"lead-generation\\" (rapport-builder / conversation-starter — NO contact details exchanged, just builds trust and warms the member up — e.g. on-the-spot posture check, technique-correction on the floor, member-story chat) OR \\"lead-magnet\\" (REAL contact-details exchange — name + email + phone go into your CRM — e.g. booked workshop signup, free MOT slot, 5-day challenge opt-in, free assessment booking)",\n' +
     '      "name": "specific named offer — e.g. \\"Post-Baby Posture & Core Check (15 min)\\" / \\"60-Min Lower-Back Pain Workshop (Saturday morning)\\" / \\"5-Day Lunchtime Strength Challenge\\"",\n' +
     '      "type": "one of: trial / group-trial / workshop / seminar / challenge / technique-check / health-check / MOT / consultation / taster-session / goal-setting / Q&A",\n' +
     '      "duration": "how long it takes from the members perspective — e.g. \\"15 min on the floor\\" / \\"45 min booked slot\\" / \\"5 days at home, 10 min/day\\"",\n' +
-    '      "price": "\\"Free\\" / \\"£X\\" / \\"Member benefit (no charge)\\" / \\"£X for non-members\\"",\n' +
+    '      "price": "Most items should be \\"Free\\" or \\"Member benefit (no charge)\\". A paid micro-offer here is rare (a paid first step is the FEO\'s job). If a paid price is genuinely the right fit, anchor it as 5-15% of the coach\'s core offer price — DO NOT default to £27.",\n' +
     '      "bestFor": "the type of gym member this is sized for — BE SPECIFIC TO THIS NICHE, not generic all members",\n' +
     '      "floorScript": "verbatim 1-2 sentences the coach uses during a Step 3 or Step 4 conversation to actually offer it — sounds like real spoken English, no jargon",\n' +
-    '      "funnelRole": "what this offer feeds into — one of: \\"Standalone — pays for itself\\" / \\"Feeds into FEO (£X paid first step)\\" / \\"Feeds into core-offer discovery call\\" / \\"Builds email list for nurture sequence\\" / \\"Re-engages lapsed members\\"",\n' +
+    '      "funnelRole": "what this offer feeds into — one of: \\"Standalone — pays for itself\\" / \\"Feeds into FEO\\" / \\"Feeds into core-offer discovery call\\" / \\"Builds email list for nurture sequence\\" / \\"Re-engages lapsed members\\"",\n' +
+    '      "personalityFit": "ONE LINE — what kind of coach personality this offer suits best (e.g. \\"warm + chatty\\" / \\"technical + precise\\" / \\"high-energy group leader\\" / \\"introvert-friendly — works on the quiet floor\\"). Helps the coach spot which 2-3 items feel natural for THEM to actually run.",\n' +
     '      "coachPrep": "what the coach brings / sets up before delivering it — equipment, paperwork, takeaway card, room booking, etc."\n' +
     '    }\n' +
     '  ],\n' +
     '  "implementationTips": ["", "", ""]\n' +
     '}\n\n' +
-    'IMPORTANT for conversionMenu: generate 5-7 items (NOT just one — the JSON above shows the SHAPE of each item). Cover a real coachs actual range:\n' +
-    '- At least ONE low-commitment item the coach can deliver on-the-spot during a floor conversation (e.g. 10-15 min technique correction, posture screen, body comp check).\n' +
-    '- At least ONE booked-slot item that requires a calendar booking (e.g. 45-min PT trial, 30-min health MOT, goal-setting consultation).\n' +
-    '- At least ONE group item the coach can run with multiple members at once (e.g. workshop, seminar, in-gym challenge).\n' +
-    '- At least ONE item suitable for NEW members and at least one for EXISTING or LAPSED members.\n' +
-    '- Each name must sound branded and specific, not generic. "Free PT session" is generic; "45-Min Strength Foundations Trial — first session free" is specific.\n' +
-    '- Each floorScript must read like spoken English a coach would actually say, no marketing copy.';
+    'IMPORTANT for conversionMenu — frame this as a TOOLKIT the coach picks FROM, not a prescribed checklist. The coach should pick 2-4 items that match THEIR personality and niche and run those well, NOT try to deliver every item. Vary the personalityFit field across items so the coach can easily spot the ones that suit them.\n\n' +
+    'Generate 5-7 items split cleanly across TWO categories:\n\n' +
+    '  BUCKET 1 — LEAD-GENERATION ACTIVITIES (category: "lead-generation") — minimum 2 items\n' +
+    '  Spark conversation and build rapport. NO contact details exchanged. Be useful and likeable so the member is warmed up enough to opt in to something bigger later.\n' +
+    '  Examples by niche:\n' +
+    '  - Post-natal: on-the-spot posture check, "have you felt your deep core engage yet" 60-second demo, story-led postpartum chat\n' +
+    '  - Beginners: equipment quick-tour, "want me to show you the safest way to start that?" form fix, friendly induction-style check-in\n' +
+    '  - Hybrid athletes: programme spot-audit, "I noticed your snatch — can I show you one cue?", 5-min mobility eyeball\n' +
+    '  - 40+: balance quick-test, joint range-of-motion screen, "how does this feel?" mobility check\n\n' +
+    '  BUCKET 2 — LEAD MAGNETS (category: "lead-magnet") — minimum 3 items\n' +
+    '  Contact details ACTUALLY GET EXCHANGED — name + email + phone into the CRM. The conversion event that makes the floor work pay off.\n' +
+    '  Examples by niche:\n' +
+    '  - Post-natal: free Post-Baby Core MOT (booked slot signup), "Is My Core Ready?" workshop (email signup), 5-Day Belly Strength Challenge (email opt-in)\n' +
+    '  - Beginners: free Foundations Assessment (booking form), "Learn To Lift" workshop (signup), Gym Confidence Mini-Course (email opt-in)\n' +
+    '  - Hybrid athletes: free Performance Battery (booking + intake), Periodisation Workshop (signup), 14-Day Strength Audit (email opt-in)\n\n' +
+    'Cross-bucket rules:\n' +
+    '- At least ONE on-the-spot deliverable (no booking needed) AND at least ONE booked-slot item.\n' +
+    '- At least ONE group item (workshop, seminar, in-gym challenge).\n' +
+    '- At least ONE item suited to NEW members AND at least one for EXISTING or LAPSED members.\n' +
+    '- Each name must sound branded and specific, not generic. "Free PT session" is generic; "45-Min Strength Foundations Trial" is specific.\n' +
+    '- Each floorScript must read like spoken English a coach would actually say, no marketing copy.\n' +
+    '- Vary personalityFit across items — do not default every item to the same archetype.\n' +
+    '- PRICING — do not default any item to £27. Most should be Free or Member benefit. If a paid micro-offer fits, anchor it to coach\'s core offer price (5-15%), not a fixed number.\n\n' +
+    'NICHE TYPOLOGY — read the niche FIRST, set the nicheCategory field, then bias the conversionMenu vocabulary toward the offer-types that fit that category:\n' +
+    '- beginners / new to the gym \\u2192 gym induction, "learn to lift" workshop, equipment-tour walkthrough, first-PT-session free, programme-starter consultation, beginner small-group circuit\n' +
+    '- returning-to-fitness \\u2192 re-induction, movement screen, gradual-return programme review, "ease back in" 4-week starter\n' +
+    '- hybrid-or-performance \\u2192 assessment battery, programme review, lactate or VO2 testing, technique audit on Olympic lifts, periodisation consultation\n' +
+    '- strength-focused \\u2192 1RM assessment, technique clinic on squat/bench/deadlift, programme tune-up, accessory-work audit\n' +
+    '- endurance-or-runners \\u2192 gait analysis, pace assessment, training-plan review, strength-for-runners workshop\n' +
+    '- post-natal-or-pre-natal \\u2192 posture screen, core function check, pelvic floor MOT, mum-and-baby session, "is my core ready" workshop\n' +
+    '- 40-plus-or-older-adults \\u2192 mobility screen, joint MOT, balance + falls assessment, "stay strong past 50" workshop\n' +
+    '- body-composition-or-weight-loss \\u2192 body comp scan, food diary review, transformation kickoff, habit-stacking workshop\n' +
+    '- rehab-or-post-injury \\u2192 movement screen, gradual-return programme, technique correction with restrictions, pain-mapping consultation\n' +
+    '- general-fitness \\u2192 mix of induction, goal-setting, technique check, body comp scan, free trial session\n\n' +
+    'Every conversionMenu item should sound like it belongs to a coach who specialises in THAT category. A post-natal coach should not be offering "1RM assessments"; a hybrid-athlete coach should not be offering "posture screens for new mums".';
 }
 // ── RENDER HELPERS ─────────────────────────────────────────────────────────
 function stdBanner(){return `<div class="standard-banner"><div class="mark">⚡</div><div><div class="title">Generated to The PTMA Standard</div><div class="sub">Hormozi · Jeff Walker · StoryBrand · Sinek · Vaynerchuk · Brunson · Luke Johnson · Simon Booth · FMA · James Smith</div></div></div>`;}
@@ -3617,31 +3648,70 @@ function rGymFloor(d) {
     h += stepCard(4, 'var(--gold)', 'Lead Gen Tool', body);
   }
 
-  // TIER 2.8: Conversion Menu — 5-7 named, scoped, scripted offers to pull from during Step 3/4
+  // TIER 2.8c: Conversion Menu — TOOLKIT, grouped into Lead Generation vs Lead Magnets.
+  // Coach picks 2-4 that fit their personality + niche, NOT all of them.
   if (d.conversionMenu && d.conversionMenu.length) {
-    h += '<div class="card card-cyan"><div class="section-label">Gym Floor Conversion Menu</div>';
-    // TIER 2.8b: show the model's read of the niche so the coach can spot misreads
+    const items = d.conversionMenu.filter(Boolean);
+    // Split by category — defensive about typos/casing/missing field
+    const isLeadMagnet = c => /lead.?magnet/i.test(c.category || '') || /opt[- ]?in|signup|booked.*slot|workshop|challenge|MOT.*book|email.*opt|capture.*details/i.test([c.category, c.type].join(' '));
+    const magnets = items.filter(isLeadMagnet);
+    const generators = items.filter(c => !isLeadMagnet(c));
+
+    h += '<div class="card card-cyan"><div class="section-label">Gym Floor Conversion Toolkit</div>';
+
+    // Niche-read tag (Tier 2.8b)
     if (d.nicheCategory) {
       h += '<div style="display:inline-block;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;background:#fff;border:1px solid var(--cyanBorder);color:var(--teal);padding:4px 10px;border-radius:4px;font-weight:700;margin-bottom:10px">Niche read as: ' + d.nicheCategory + '</div>';
     }
-    h += '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">' + d.conversionMenu.filter(Boolean).length + ' specific offers you can pull from during a Step 3 or Step 4 conversation. Each is sized to fit naturally inside a gym-floor exchange and tells you where it feeds in your funnel.</div>';
-    d.conversionMenu.filter(Boolean).forEach((c, i) => {
-      h += '<div style="background:#fff;border:1px solid var(--border);border-left:4px solid var(--cyan);border-radius:8px;padding:14px 16px;margin-bottom:10px">';
-      h += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap">';
-      h += '<span style="font-size:15px;font-weight:700;color:var(--navy)">' + (i+1) + '. ' + (c.name || '(unnamed offer)') + '</span>';
-      if (c.type) h += '<span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;background:var(--cyanLight);color:var(--teal);padding:2px 8px;border-radius:4px;font-weight:600">' + c.type + '</span>';
-      h += '</div>';
+
+    // Pick-from framing intro
+    h += '<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:8px"><strong>This is a toolkit, not a checklist.</strong> Pick 2-4 of these that match YOUR personality, your niche, and your gym\'s rhythm — then run those well. Trying to do every item below is the fastest way to do none of them properly.</div>';
+    h += '<div style="font-size:12px;color:var(--textSub);margin-bottom:18px">' + items.length + ' items split into two buckets — <strong style="color:var(--teal)">Lead-Generation Activities</strong> (build rapport, no contact details exchanged) and <strong style="color:var(--gold)">Lead Magnets</strong> (contact details go into your CRM).</div>';
+
+    // Helper that renders one card with the new fields
+    const renderCard = (c, i, accentColor) => {
+      let card = '<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ' + accentColor + ';border-radius:8px;padding:14px 16px;margin-bottom:10px">';
+      card += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap">';
+      card += '<span style="font-size:15px;font-weight:700;color:var(--navy)">' + (i+1) + '. ' + (c.name || '(unnamed offer)') + '</span>';
+      if (c.type) card += '<span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;background:var(--cyanLight);color:var(--teal);padding:2px 8px;border-radius:4px;font-weight:600">' + c.type + '</span>';
+      card += '</div>';
       const meta = [c.duration, c.price].filter(Boolean).join(' · ');
-      if (meta) h += '<div style="font-size:12px;color:var(--textMid);margin-bottom:8px">' + meta + '</div>';
-      if (c.bestFor) h += '<div class="kv"><div class="k">Best for</div><div class="v">' + c.bestFor + '</div></div>';
+      if (meta) card += '<div style="font-size:12px;color:var(--textMid);margin-bottom:8px">' + meta + '</div>';
+      if (c.personalityFit) card += '<div style="font-size:11px;color:' + accentColor + ';font-style:italic;margin-bottom:8px"><strong>Fits:</strong> ' + c.personalityFit + '</div>';
+      if (c.bestFor) card += '<div class="kv"><div class="k">Best for</div><div class="v">' + c.bestFor + '</div></div>';
       if (c.floorScript) {
-        h += '<div style="margin-top:8px"><div class="section-label" style="font-size:10px;margin-bottom:4px">Floor script</div>';
-        h += '<div class="dm-bubble">' + c.floorScript + '</div></div>';
+        card += '<div style="margin-top:8px"><div class="section-label" style="font-size:10px;margin-bottom:4px">Floor script</div>';
+        card += '<div class="dm-bubble">' + c.floorScript + '</div></div>';
       }
-      if (c.funnelRole) h += '<div class="kv" style="margin-top:8px"><div class="k">Funnel role</div><div class="v">' + c.funnelRole + '</div></div>';
-      if (c.coachPrep) h += '<div class="kv"><div class="k">Coach prep</div><div class="v">' + c.coachPrep + '</div></div>';
+      if (c.funnelRole) card += '<div class="kv" style="margin-top:8px"><div class="k">Funnel role</div><div class="v">' + c.funnelRole + '</div></div>';
+      if (c.coachPrep) card += '<div class="kv"><div class="k">Coach prep</div><div class="v">' + c.coachPrep + '</div></div>';
+      card += '</div>';
+      return card;
+    };
+
+    // BUCKET 1 — Lead-Generation Activities
+    if (generators.length) {
+      h += '<div style="margin-top:14px;margin-bottom:12px">';
+      h += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--teal);text-transform:uppercase">Bucket 1 — Lead-Generation Activities</span><span style="font-size:11px;color:var(--textSub)">· ' + generators.length + ' items</span></div>';
+      h += '<div style="font-size:12px;color:var(--textMid);line-height:1.5;margin-bottom:10px">Conversation-starters and rapport-builders. <strong>NO contact details exchanged</strong> — these warm members up so they\'re ready to opt in to something bigger.</div>';
       h += '</div>';
-    });
+      generators.forEach((c, i) => h += renderCard(c, i, 'var(--teal)'));
+    }
+
+    // BUCKET 2 — Lead Magnets
+    if (magnets.length) {
+      h += '<div style="margin-top:18px;margin-bottom:12px">';
+      h += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--gold);text-transform:uppercase">Bucket 2 — Lead Magnets</span><span style="font-size:11px;color:var(--textSub)">· ' + magnets.length + ' items</span></div>';
+      h += '<div style="font-size:12px;color:var(--textMid);line-height:1.5;margin-bottom:10px"><strong>Contact details get exchanged here.</strong> Name + email + phone go into your CRM. This is the conversion event that makes the floor work pay off.</div>';
+      h += '</div>';
+      magnets.forEach((c, i) => h += renderCard(c, i, 'var(--gold)'));
+    }
+
+    // Weekly mix suggestion
+    h += '<div style="margin-top:18px;padding:12px 14px;background:#fff;border:1px dashed var(--cyanBorder);border-radius:8px;font-size:12px;color:var(--textMid);line-height:1.55">' +
+      '<strong style="color:var(--navy)">Weekly mix suggestion:</strong> run 2-3 Lead-Generation items every floor shift (Bucket 1) and offer 1-2 Lead Magnets per week (Bucket 2). Earlier in your campaign (S1/S2) lean into Bucket 1 — pure rapport. Closer to launch (S3/S4) lean into Bucket 2 to fill the CRM ahead of the offer.' +
+      '</div>';
+
     h += '</div>';
   }
 
@@ -4157,19 +4227,39 @@ function mdGymFloor(d) {
     if (s.followUpDM) m += '\n**Next-day follow-up DM:**\n> ' + ss(s.followUpDM).replace(/\n/g, '\n> ') + '\n\n';
   }
   if (d.conversionMenu?.length) {
-    m += '## Gym Floor Conversion Menu\n\n';
+    const items = d.conversionMenu.filter(Boolean);
+    const isLeadMagnet = c => /lead.?magnet/i.test(c.category || '') || /opt[- ]?in|signup|booked.*slot|workshop|challenge|MOT.*book|email.*opt|capture.*details/i.test([c.category, c.type].join(' '));
+    const magnets = items.filter(isLeadMagnet);
+    const generators = items.filter(c => !isLeadMagnet(c));
+
+    m += '## Gym Floor Conversion Toolkit\n\n';
     if (d.nicheCategory) m += '**Niche read as:** ' + ss(d.nicheCategory) + '\n\n';
-    m += '_' + d.conversionMenu.filter(Boolean).length + ' specific offers to pull from during a Step 3 or Step 4 conversation._\n\n';
-    d.conversionMenu.filter(Boolean).forEach((c, i) => {
-      m += '### ' + (i+1) + '. ' + ss(c.name || '(unnamed offer)') + (c.type ? ' _(' + ss(c.type) + ')_' : '') + '\n\n';
+    m += '**This is a toolkit, not a checklist.** Pick 2-4 items that match YOUR personality, your niche, and your gym\'s rhythm — then run those well. Trying to do every item is the fastest way to do none of them properly.\n\n';
+    m += '_' + items.length + ' items, split into Lead-Generation Activities (rapport, no contact details exchanged) and Lead Magnets (contact details into your CRM)._\n\n';
+
+    const renderItem = (c, i) => {
+      let s = '### ' + (i+1) + '. ' + ss(c.name || '(unnamed offer)') + (c.type ? ' _(' + ss(c.type) + ')_' : '') + '\n\n';
       const meta = [c.duration, c.price].filter(Boolean).map(ss).join(' · ');
-      if (meta) m += '_' + meta + '_\n\n';
-      if (c.bestFor) m += '- **Best for:** ' + ss(c.bestFor) + '\n';
-      if (c.floorScript) m += '\n**Floor script:**\n> ' + ss(c.floorScript).replace(/\n/g, '\n> ') + '\n\n';
-      if (c.funnelRole) m += '- **Funnel role:** ' + ss(c.funnelRole) + '\n';
-      if (c.coachPrep) m += '- **Coach prep:** ' + ss(c.coachPrep) + '\n';
-      m += '\n';
-    });
+      if (meta) s += '_' + meta + '_\n\n';
+      if (c.personalityFit) s += '- **Fits:** ' + ss(c.personalityFit) + '\n';
+      if (c.bestFor) s += '- **Best for:** ' + ss(c.bestFor) + '\n';
+      if (c.floorScript) s += '\n**Floor script:**\n> ' + ss(c.floorScript).replace(/\n/g, '\n> ') + '\n\n';
+      if (c.funnelRole) s += '- **Funnel role:** ' + ss(c.funnelRole) + '\n';
+      if (c.coachPrep) s += '- **Coach prep:** ' + ss(c.coachPrep) + '\n';
+      return s + '\n';
+    };
+
+    if (generators.length) {
+      m += '### Bucket 1 — Lead-Generation Activities (' + generators.length + ')\n\n';
+      m += '_Conversation-starters and rapport-builders. NO contact details exchanged. These warm members up so they\'re ready to opt in to something bigger._\n\n';
+      generators.forEach((c, i) => m += renderItem(c, i));
+    }
+    if (magnets.length) {
+      m += '### Bucket 2 — Lead Magnets (' + magnets.length + ')\n\n';
+      m += '_Contact details ACTUALLY GET EXCHANGED. Name + email + phone go into your CRM. The conversion event that makes the floor work pay off._\n\n';
+      magnets.forEach((c, i) => m += renderItem(c, i));
+    }
+    m += '> **Weekly mix:** run 2-3 Bucket 1 items every floor shift; offer 1-2 Bucket 2 items per week. Earlier in campaign (S1/S2) lean Bucket 1. Closer to launch (S3/S4) lean Bucket 2 to fill the CRM.\n\n';
   }
   if (d.weeklyTargets) {
     const w = d.weeklyTargets;
@@ -4541,9 +4631,16 @@ async function exportAllTabsTSV() {
   }
   // Section 7 — Gym Floor conversion menu
   if (S.res.gymfloor && S.res.gymfloor.conversionMenu && S.res.gymfloor.conversionMenu.length) {
-    const gf = [['GYM FLOOR CONVERSION MENU'], ['#', 'Name', 'Type', 'Duration', 'Price', 'Best for', 'Floor script', 'Funnel role']];
-    S.res.gymfloor.conversionMenu.forEach((c, i) => {
-      gf.push([String(i+1), c.name || '', c.type || '', c.duration || '', c.price || '', c.bestFor || '', c.floorScript || '', c.funnelRole || '']);
+    const items = S.res.gymfloor.conversionMenu.filter(Boolean);
+    const isLeadMagnet = c => /lead.?magnet/i.test(c.category || '') || /opt[- ]?in|signup|booked.*slot|workshop|challenge|MOT.*book|email.*opt|capture.*details/i.test([c.category, c.type].join(' '));
+    const gf = [['GYM FLOOR CONVERSION TOOLKIT'], ['Bucket', 'Name', 'Type', 'Duration', 'Price', 'Fits (personality)', 'Best for', 'Floor script', 'Funnel role']];
+    // Bucket 1 — Lead-Generation Activities
+    items.filter(c => !isLeadMagnet(c)).forEach(c => {
+      gf.push(['Lead-Gen', c.name || '', c.type || '', c.duration || '', c.price || '', c.personalityFit || '', c.bestFor || '', c.floorScript || '', c.funnelRole || '']);
+    });
+    // Bucket 2 — Lead Magnets
+    items.filter(isLeadMagnet).forEach(c => {
+      gf.push(['Lead Magnet', c.name || '', c.type || '', c.duration || '', c.price || '', c.personalityFit || '', c.bestFor || '', c.floorScript || '', c.funnelRole || '']);
     });
     sections.push(gf);
   }
