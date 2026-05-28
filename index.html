@@ -416,13 +416,73 @@ select option { background: #fff; }
 /* ── DIVIDER ── */
 .divider { height: 1px; background: var(--border); margin: 20px 0; }
 
-/* ── RESPONSIVE ── */
+/* ── RESPONSIVE — PHASE 2 mobile pass (slide 14: "use it on the gym floor mid-shift") ── */
+
+/* Tablet / small laptop */
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  body { padding: 0 4px !important; }
+  .container, main, .main { max-width: 100% !important; padding: 0 12px !important; }
+  .card { padding: 16px 14px !important; }
+  .tabs { overflow-x: auto !important; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+  .tabs .tab { white-space: nowrap; flex-shrink: 0; }
+}
+
+/* Phone */
 @media (max-width: 640px) {
-  .grid-2 { grid-template-columns: 1fr; }
+  body { font-size: 14px; }
+  .grid-2 { grid-template-columns: 1fr; gap: 8px; }
   .pain-grid { grid-template-columns: 1fr; }
-  .kpi-row { grid-template-columns: 1fr 1fr; }
-  .page-title { font-size: 22px; }
-  .campaign-name { font-size: 20px; }
+  .kpi-row { grid-template-columns: 1fr !important; }
+  .page-title { font-size: 20px; line-height: 1.25; }
+  .campaign-name { font-size: 18px; }
+  .card-title { font-size: 16px; }
+  .section-label { font-size: 11px; }
+  h1, h2 { font-size: 18px !important; line-height: 1.3 !important; }
+  h3 { font-size: 15px !important; }
+  /* Cards lose padding */
+  .card { padding: 14px 12px !important; margin-bottom: 12px !important; border-radius: 10px !important; }
+  /* Tab bar — horizontal scroll, smaller font */
+  .tabs { padding: 4px 2px !important; gap: 4px !important; overflow-x: auto !important; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+  .tabs .tab { font-size: 12px !important; padding: 7px 10px !important; white-space: nowrap; flex-shrink: 0; }
+  /* Form inputs — full width, larger touch targets */
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    width: 100% !important;
+    font-size: 16px !important; /* prevent iOS zoom */
+    padding: 12px 14px !important;
+    min-height: 44px;
+  }
+  label { font-size: 12px !important; }
+  /* Floating action buttons row — reposition to a single bottom row that fits */
+  #ptmaCopyAll, #ptmaExportWrap, #ptmaRegen, #ptmaLibBtn {
+    bottom: 8px !important;
+    padding: 9px 11px !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+  }
+  #ptmaCopyAll  { right: 6px !important; }
+  #ptmaRegen    { right: 96px !important; }
+  #ptmaExportWrap { right: 200px !important; }
+  #ptmaLibBtn   { right: 300px !important; }
+  /* The export dropdown menu — full-width minus a margin */
+  #ptmaExportMenu { right: -190px !important; min-width: 260px !important; }
+  /* Library modal — full screen on phone */
+  #ptmaLibPanel > div { max-height: 96vh !important; border-radius: 10px !important; }
+  /* Gen pill at top-right */
+  #ptmaGenPill { top: 8px !important; right: 8px !important; font-size: 11px !important; padding: 7px 12px !important; }
+  /* DM bubbles, kpi rows */
+  .dm-bubble { padding: 10px 12px !important; font-size: 13px !important; }
+  .kv { grid-template-columns: 1fr !important; gap: 2px !important; padding: 8px 0 !important; }
+  .kv .k { font-size: 10px !important; }
+  .kv .v { font-size: 13px !important; }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  #ptmaCopyAll  { right: 6px !important; }
+  #ptmaRegen    { display: none !important; } /* keep room for the essentials */
+  #ptmaExportWrap { right: 96px !important; }
+  #ptmaLibBtn   { right: 196px !important; }
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -1741,6 +1801,100 @@ function clearCampaign() {
   try { localStorage.removeItem(SAVE_KEY); } catch {}
 }
 
+// ── PHASE 2 — SAVED CAMPAIGN LIBRARY ──────────────────────────────────────
+// Separate from the autosave slot above. The autosave is for refresh-recovery
+// of the CURRENT working campaign. The library is the coach's saved history —
+// any campaign they want to keep can be saved here and reloaded later.
+const LIBRARY_KEY = 'ptma_library_v1';
+
+function _readLibrary() {
+  try {
+    const raw = localStorage.getItem(LIBRARY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+
+function _writeLibrary(arr) {
+  try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(arr)); return true; }
+  catch (e) { console.warn('Library write failed (probably quota):', e.message); return false; }
+}
+
+function saveCampaignToLibrary(label) {
+  const brief = S.brief || {};
+  if (!S.res || Object.keys(S.res).length === 0) {
+    showToast('Nothing to save — generate a campaign first');
+    return null;
+  }
+  const id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  const entry = {
+    id,
+    label: label || (brief.offer || brief.niche || 'Untitled campaign'),
+    niche: brief.niche || '',
+    offer: brief.offer || '',
+    price: brief.price || '',
+    goal: brief.goal || '',
+    savedAt: new Date().toISOString(),
+    brief, res: S.res, lang: S.lang, voice: S.voice, opts: S.opts, f2f: S.f2f
+  };
+  const lib = _readLibrary();
+  lib.unshift(entry);
+  if (_writeLibrary(lib)) {
+    showToast('Saved "' + entry.label + '" to your library ✓');
+    return id;
+  }
+  showToast('Save failed — storage may be full. Export markdown instead.');
+  return null;
+}
+
+function loadCampaignFromLibrary(id) {
+  const lib = _readLibrary();
+  const entry = lib.find(c => c.id === id);
+  if (!entry) { showToast('Campaign not found in library'); return; }
+  // Restore everything
+  S.brief = entry.brief || {};
+  S.res = entry.res || {};
+  S.lang = entry.lang || null;
+  S.voice = entry.voice || null;
+  S.opts = entry.opts || S.opts;
+  S.f2f = (typeof entry.f2f === 'boolean') ? entry.f2f : S.f2f;
+  saveCampaign(entry.brief);
+  try {
+    if (S.res.strat) rStrat(S.res.strat);
+    if (S.res.lead) rLead(S.res.lead);
+    if (S.res.content) rContent(S.res.content);
+    if (S.res.email) rEmail(S.res.email);
+    if (S.res.dm) rDM(S.res.dm);
+    if (S.res.manychat) rManyChat(S.res.manychat, entry.brief);
+    if (S.res.meta) rMeta(S.res.meta, entry.brief);
+    if (S.res.gymfloor) { rGymFloor(S.res.gymfloor); const t = document.getElementById('gymfloorTab'); if (t) t.style.display = ''; }
+    rCalendar();
+  } catch (e) { console.warn('Library load partial fail:', e.message); }
+  // Sync optional tab visibility
+  try {
+    const mc = document.getElementById('manychatTab'); if (mc) mc.style.display = S.opts.manychat ? '' : 'none';
+    const mt = document.getElementById('metaTab'); if (mt) mt.style.display = S.opts.meta ? '' : 'none';
+  } catch (_) {}
+  for (let i = 0; i < 6; i++) markStep(i, 'done');
+  showTab(3);
+  showToast('Loaded "' + entry.label + '" from library ✓');
+}
+
+function deleteCampaignFromLibrary(id) {
+  const lib = _readLibrary().filter(c => c.id !== id);
+  _writeLibrary(lib);
+  showToast('Campaign removed from library');
+}
+
+function renameCampaignInLibrary(id, newLabel) {
+  const lib = _readLibrary();
+  const idx = lib.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  lib[idx].label = newLabel;
+  _writeLibrary(lib);
+}
+
 // TIER 2.3 + 2.6d: Generate email sequences. When chained campaigns are set,
 // generate ONE sequence PER campaign — each with its own count (per-campaign override
 // or global default). Each batch ~3500 tokens. Handles any count from 3 to 10.
@@ -2191,6 +2345,33 @@ Return this EXACT JSON shape (no extra fields, no markdown fences):
     "target": "",
     "opener": "",
     "offer": ""
+  },
+  "reactivationSequence": {
+    "purpose": "PHASE 2 PROMISE — a 3-touch win-back sequence (not one nudge). Built to actually bring lapsed clients / cold leads / past lead-magnet downloaders BACK into the funnel. Each touch escalates intent — Touch 1 = soft re-open, Touch 2 = value/proof, Touch 3 = clean ask. 80% of replies come from Touch 2 or 3, NOT Touch 1.",
+    "target": "the specific kind of lapsed contact this sequence is built for — be niche-specific (e.g. 'mums who opted into the free 5-Day Belly Strength Reset 3-9 months ago and never bought anything')",
+    "touch1": {
+      "timing": "Day 0 — the opening touch",
+      "channel": "DM / email / SMS — pick the best fit for how they originally came in",
+      "subjectOrOpener": "the literal first line they read — must feel personal, not a marketing blast",
+      "message": "full message body — soft re-open, NO ask, acknowledges the gap honestly, opens a question they can reply to in one sentence",
+      "ifNoReply": "what the coach does if no reply by Day 2 — usually just wait for Touch 2"
+    },
+    "touch2": {
+      "timing": "Day 3 — the value / proof touch",
+      "channel": "same channel as Touch 1 unless the coach has a reason to switch",
+      "subjectOrOpener": "the first line they read",
+      "message": "full message body — drops a piece of value relevant to their original opt-in OR shares a recent specific client result. Still NO hard ask — bridges from \"here\'s why I\'m reaching out\" to \"would this be useful\"",
+      "ifNoReply": "what to do if no reply by Day 5"
+    },
+    "touch3": {
+      "timing": "Day 7 — the clean ask",
+      "channel": "same channel — escalation is in TONE not medium",
+      "subjectOrOpener": "the first line they read",
+      "message": "full message body — short, direct, ONE clear ask (book a chat / try the FEO / opt back into the list). Names a specific next step with a specific date. Closes the door politely if it\'s not a yes.",
+      "ifNoReply": "what the coach does next — usually 'move them to the 90-day re-engagement bucket and stop reaching out for now'"
+    },
+    "expectedReplyRates": "rough %-based expectation per touch (e.g. Touch 1: 5-15% / Touch 2: 10-20% / Touch 3: 15-25%). Compounding — the sequence as a whole usually pulls 25-40% reply.",
+    "implementationNote": "ONE LINE — how to actually run this (e.g. 'batch 20 contacts on a Monday morning, work through Touch 1 in 30 min, set calendar reminders for Touch 2 and Touch 3')"
   }
 }`;}
 
@@ -2644,6 +2825,13 @@ function rStrat(d){
       kpiHtml += '<div class="kv"><div class="k">Note</div><div class="v" style="font-style:italic">Add the first rate to compute the full leads-needed figure.</div></div>';
     }
     kpiHtml += '</div>';
+
+    // PHASE 2 — plain-English summary so the funnel reads as one sentence (slide 14 promise)
+    if (clientsNeeded && midNeeded && leadsNeeded) {
+      const weeklyLeads = Math.ceil(leadsNeeded / weeks);
+      const midNoun = ({calls:'consults', direct:'page-visits', application:'applications', gymfloor:'floor-conversations', email:'email-reads', mixed:'conversations'}[path] || 'conversations');
+      kpiHtml += '<div style="margin-top:14px;padding:14px 18px;background:#fff;border:1px dashed var(--gold);border-radius:10px;font-size:14px;color:var(--navy);line-height:1.7"><strong>In plain English:</strong> to hit ' + fmt(goal) + '/month from ' + fmt(price) + ' clients you need <strong style="color:var(--gold)">' + clientsNeeded + ' new clients</strong> → <strong>' + midNeeded + ' ' + midNoun + '</strong> → <strong>' + leadsNeeded + ' leads</strong> over the ' + weeks + '-week campaign. That\'s ≈ <strong style="color:var(--gold)">' + weeklyLeads + ' leads per week</strong>. No mental maths required.</div>';
+    }
   }
 
   if (d.kpis?.length) {
@@ -2983,9 +3171,36 @@ function rDM(d){
     h += '<div class="card"><div class="section-label">Objection Handles</div>' +
       d.objectionHandles.map(o => '<div style="margin-bottom:18px"><p style="font-size:13px;color:var(--amber);font-weight:600;margin-bottom:8px">"' + (o.objection||'') + '"</p><div class="dm-bubble">' + (o.response||'') + '</div></div>').join('') + '</div>';
   }
-  if (d.reactivationDM) {
+  // PHASE 2 — 3-touch reactivation sequence (slide 14 promise)
+  if (d.reactivationSequence) {
+    const rs = d.reactivationSequence;
+    let body = '';
+    if (rs.purpose) body += '<p style="font-size:13px;color:var(--textMid);font-style:italic;margin-bottom:14px">' + rs.purpose + '</p>';
+    if (rs.target) body += '<div class="kv" style="margin-bottom:14px"><div class="k">Target</div><div class="v">' + rs.target + '</div></div>';
+    const touchColors = { touch1: 'var(--cyan)', touch2: 'var(--teal)', touch3: 'var(--gold)' };
+    const touchLabels = { touch1: 'Touch 1 — Soft re-open', touch2: 'Touch 2 — Value / proof', touch3: 'Touch 3 — Clean ask' };
+    ['touch1', 'touch2', 'touch3'].forEach(k => {
+      const t = rs[k];
+      if (!t) return;
+      const col = touchColors[k];
+      body += '<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ' + col + ';border-radius:8px;padding:14px 16px;margin-bottom:12px">';
+      body += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap">';
+      body += '<span style="font-size:14px;font-weight:700;color:var(--navy)">' + touchLabels[k] + '</span>';
+      if (t.timing) body += '<span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;background:' + col + ';color:#fff;padding:2px 8px;border-radius:4px;font-weight:600">' + t.timing + '</span>';
+      if (t.channel) body += '<span style="font-size:11px;color:var(--textSub)">· via ' + t.channel + '</span>';
+      body += '</div>';
+      if (t.subjectOrOpener) body += '<div style="font-size:11px;font-weight:700;color:var(--textSub);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">First line they read</div><div style="font-size:13px;color:var(--navy);font-weight:600;margin-bottom:10px">"' + t.subjectOrOpener + '"</div>';
+      if (t.message) body += '<div class="dm-bubble" style="margin-bottom:8px">' + t.message + '</div>';
+      if (t.ifNoReply) body += '<div class="kv"><div class="k">If no reply</div><div class="v">' + t.ifNoReply + '</div></div>';
+      body += '</div>';
+    });
+    if (rs.expectedReplyRates) body += '<div class="kv" style="margin-top:10px"><div class="k">Expected reply rate</div><div class="v v-gold">' + rs.expectedReplyRates + '</div></div>';
+    if (rs.implementationNote) body += '<div style="margin-top:12px;padding:10px 14px;background:#fff;border:1px dashed var(--goldBorder);border-radius:8px;font-size:12px;color:var(--textMid);line-height:1.5"><strong style="color:var(--navy)">How to run it:</strong> ' + rs.implementationNote + '</div>';
+    h += '<div class="card card-amber"><div class="section-label">Reactivation Sequence · 3-touch win-back</div>' + body + '</div>';
+  } else if (d.reactivationDM) {
+    // Legacy single-touch fallback (pre-Phase 2)
     const rd = d.reactivationDM;
-    h += renderScript('Reactivation DM', 'badge-amber', '', rd.trigger, [['Target', rd.target], ['Opener', rd.opener], ['Reactivation offer', rd.offer]], 'dm_react');
+    h += renderScript('Reactivation DM (legacy single-touch — regenerate for the 3-touch sequence)', 'badge-amber', '', rd.trigger, [['Target', rd.target], ['Opener', rd.opener], ['Reactivation offer', rd.offer]], 'dm_react');
   }
   // Old gymFloorConversation still renders if present (moves to its own tab in Tier 2)
   if (d.gymFloorConversation && !d.welcomeDM) {
@@ -4040,7 +4255,27 @@ function mdDM(d) {
       m += '**"' + ss(o.objection) + '"**\n> ' + ss(o.response) + '\n\n';
     });
   }
-  if (d.reactivationDM) m += section('Reactivation DM', d.reactivationDM.trigger, [['Target', d.reactivationDM.target], ['Opener', d.reactivationDM.opener], ['Reactivation offer', d.reactivationDM.offer]]);
+  // PHASE 2 — 3-touch reactivation sequence
+  if (d.reactivationSequence) {
+    const rs = d.reactivationSequence;
+    m += '## Reactivation Sequence — 3-touch win-back\n\n';
+    if (rs.purpose) m += '_' + ss(rs.purpose) + '_\n\n';
+    if (rs.target) m += '**Target:** ' + ss(rs.target) + '\n\n';
+    [['touch1', 'Touch 1 — Soft re-open'], ['touch2', 'Touch 2 — Value / proof'], ['touch3', 'Touch 3 — Clean ask']].forEach(([k, label]) => {
+      const t = rs[k];
+      if (!t) return;
+      m += '### ' + label + '\n\n';
+      if (t.timing) m += '- **Timing:** ' + ss(t.timing) + '\n';
+      if (t.channel) m += '- **Channel:** ' + ss(t.channel) + '\n';
+      if (t.subjectOrOpener) m += '\n**First line they read:**\n> "' + ss(t.subjectOrOpener) + '"\n\n';
+      if (t.message) m += '**Message:**\n> ' + ss(t.message).replace(/\n/g, '\n> ') + '\n\n';
+      if (t.ifNoReply) m += '_If no reply: ' + ss(t.ifNoReply) + '_\n\n';
+    });
+    if (rs.expectedReplyRates) m += '**Expected reply rate:** ' + ss(rs.expectedReplyRates) + '\n\n';
+    if (rs.implementationNote) m += '**How to run it:** ' + ss(rs.implementationNote) + '\n\n';
+  } else if (d.reactivationDM) {
+    m += section('Reactivation DM (legacy single-touch)', d.reactivationDM.trigger, [['Target', d.reactivationDM.target], ['Opener', d.reactivationDM.opener], ['Reactivation offer', d.reactivationDM.offer]]);
+  }
   if (d.gymFloorConversation && !d.welcomeDM) {
     m += section('Gym Floor Conversation (will move to its own tab next round)', null, [['How to start', d.gymFloorConversation.opener], ['Bridge to contact', d.gymFloorConversation.bridge], ['Follow-up DM after', d.gymFloorConversation.followUp]]);
   }
@@ -4646,17 +4881,37 @@ async function exportAllTabsTSV() {
     const dmEntries = [
       ['Welcome DM', S.res.dm.welcomeDM],
       ['Story Reply', S.res.dm.storyReplyScript],
-      ['Lead Ad Reply', S.res.dm.leadAdReplyScript],
-      ['Reactivation', S.res.dm.reactivationDM]
+      ['Lead Ad Reply', S.res.dm.leadAdReplyScript]
     ];
+    // Reactivation: prefer the new 3-touch sequence; fall back to legacy single touch
+    if (S.res.dm.reactivationSequence) {
+      // Just a top-line row pointing the coach to the dedicated section below
+      dmEntries.push(['Reactivation (3-touch)', S.res.dm.reactivationSequence.target || 'see Reactivation Sequence section below', S.res.dm.reactivationSequence.touch1 && S.res.dm.reactivationSequence.touch1.subjectOrOpener || '', 'See Touch 2 + Touch 3 in dedicated section']);
+    } else if (S.res.dm.reactivationDM) {
+      dmEntries.push(['Reactivation (legacy)', S.res.dm.reactivationDM.trigger || '', S.res.dm.reactivationDM.opener || '', S.res.dm.reactivationDM.offer || '']);
+    }
     dmEntries.forEach(([name, val]) => {
       if (!val) return;
+      // String-based rows we already built (reactivation) push directly; objects pull standard fields.
+      if (typeof val === 'string') return;
       const whenTo = val.whenToUse || val.when || '';
-      const opener = val.opener || val.message || (typeof val === 'string' ? val : '');
+      const opener = val.opener || val.message || '';
       const followUp = val.followUp || val.followUpNoReply || '';
       dm.push([name, whenTo, opener, followUp]);
     });
     if (dm.length > 2) sections.push(dm);
+    // Section 5b — Reactivation Sequence (full 3-touch detail)
+    if (S.res.dm.reactivationSequence) {
+      const rs = S.res.dm.reactivationSequence;
+      const reactSec = [['REACTIVATION SEQUENCE — 3-TOUCH WIN-BACK'], ['Touch', 'Timing', 'Channel', 'Opener', 'Message', 'If no reply']];
+      [['Touch 1 · Soft re-open', rs.touch1], ['Touch 2 · Value / proof', rs.touch2], ['Touch 3 · Clean ask', rs.touch3]].forEach(([label, t]) => {
+        if (!t) return;
+        reactSec.push([label, t.timing || '', t.channel || '', t.subjectOrOpener || '', t.message || '', t.ifNoReply || '']);
+      });
+      if (rs.expectedReplyRates) reactSec.push(['Expected reply rate', rs.expectedReplyRates, '', '', '', '']);
+      if (rs.implementationNote) reactSec.push(['How to run it', rs.implementationNote, '', '', '', '']);
+      sections.push(reactSec);
+    }
   }
   // Section 6 — Meta Ads (funnel-stage)
   if (S.res.meta) {
@@ -4822,6 +5077,103 @@ async function regenerateCurrentTab() {
     hideGenPill();
   }
 }
+// PHASE 2 — Library button + modal panel
+function renderLibraryButton() {
+  let btn = document.getElementById('ptmaLibBtn');
+  const count = _readLibrary().length;
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'ptmaLibBtn';
+    btn.title = 'Saved campaigns library — store and reload any campaign you build';
+    btn.style.cssText = 'position:fixed;bottom:24px;right:440px;background:#fff;color:var(--navy);border:1px solid var(--border);padding:12px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.12);z-index:9000;transition:transform 0.15s';
+    btn.onmouseover = () => btn.style.transform = 'translateY(-2px)';
+    btn.onmouseout = () => btn.style.transform = '';
+    btn.onclick = openLibraryPanel;
+    document.body.appendChild(btn);
+  }
+  btn.textContent = '📚 Library' + (count ? ' (' + count + ')' : '');
+  // Show on results tabs OR on the Brief tab (so coaches can load before generating)
+  btn.style.display = (S.tab >= 2 && S.tab <= 11) ? 'block' : 'none';
+}
+
+function openLibraryPanel() {
+  // Remove existing if any
+  const existing = document.getElementById('ptmaLibPanel');
+  if (existing) { existing.remove(); return; }
+  const lib = _readLibrary();
+  const overlay = document.createElement('div');
+  overlay.id = 'ptmaLibPanel';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,22,40,0.55);z-index:9500;display:flex;align-items:center;justify-content:center;padding:40px';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  let inner = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.35)">';
+  // Header
+  inner += '<div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:18px;font-weight:700;color:var(--navy)">📚 Campaign Library</div><div style="font-size:12px;color:var(--textSub);margin-top:2px">' + lib.length + ' saved · saved campaigns persist across browser sessions on this device</div></div><button id="ptmaLibClose" style="background:none;border:none;font-size:24px;color:var(--textSub);cursor:pointer;padding:4px 10px">×</button></div>';
+  // Save current campaign action
+  const canSave = !!(S.res && (S.res.strat || S.res.lead));
+  inner += '<div style="padding:14px 24px;border-bottom:1px solid var(--border);background:var(--card2);display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
+  if (canSave) {
+    inner += '<button id="ptmaLibSave" style="background:var(--navy);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">💾 Save current campaign to library</button>';
+    inner += '<div style="font-size:11px;color:var(--textSub)">Current: ' + ((S.brief && (S.brief.offer || S.brief.niche)) || 'untitled') + '</div>';
+  } else {
+    inner += '<div style="font-size:12px;color:var(--textSub);font-style:italic">Generate a campaign first, then come back here to save it.</div>';
+  }
+  inner += '</div>';
+  // List
+  inner += '<div style="flex:1;overflow-y:auto;padding:14px 24px">';
+  if (lib.length === 0) {
+    inner += '<div style="text-align:center;padding:40px 20px;color:var(--textSub);font-size:13px;line-height:1.7">No saved campaigns yet.<br>Once you save one, you can load it back here anytime.</div>';
+  } else {
+    lib.forEach(entry => {
+      const savedDate = entry.savedAt ? new Date(entry.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+      inner += '<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:#fff">';
+      inner += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">';
+      inner += '<div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px">' + (entry.label || 'Untitled') + '</div>';
+      if (entry.niche) inner += '<div style="font-size:11px;color:var(--textMid);line-height:1.5">Niche: ' + entry.niche.slice(0, 80) + (entry.niche.length > 80 ? '…' : '') + '</div>';
+      if (entry.offer && entry.offer !== entry.label) inner += '<div style="font-size:11px;color:var(--textMid)">Offer: ' + entry.offer + '</div>';
+      if (entry.price || entry.goal) inner += '<div style="font-size:11px;color:var(--textMid)">' + (entry.price ? '£' + entry.price + ' offer' : '') + (entry.price && entry.goal ? ' · ' : '') + (entry.goal ? '£' + entry.goal + ' goal' : '') + '</div>';
+      inner += '<div style="font-size:10px;color:var(--textSub);margin-top:6px">Saved ' + savedDate + '</div></div>';
+      inner += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      inner += '<button data-load="' + entry.id + '" style="background:var(--cyan);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Load</button>';
+      inner += '<button data-rename="' + entry.id + '" style="background:#fff;color:var(--textMid);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer">Rename</button>';
+      inner += '<button data-del="' + entry.id + '" style="background:#fff;color:var(--red, #DC2626);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer">Delete</button>';
+      inner += '</div></div></div>';
+    });
+  }
+  inner += '</div></div>';
+  overlay.innerHTML = inner;
+  document.body.appendChild(overlay);
+  // Wire actions
+  overlay.querySelector('#ptmaLibClose').onclick = () => overlay.remove();
+  const saveBtn = overlay.querySelector('#ptmaLibSave');
+  if (saveBtn) saveBtn.onclick = () => {
+    const defaultLabel = (S.brief && (S.brief.offer || S.brief.niche)) || 'Campaign ' + new Date().toLocaleDateString('en-GB');
+    const label = prompt('Save campaign as:', defaultLabel);
+    if (label === null) return;
+    const id = saveCampaignToLibrary(label.trim() || defaultLabel);
+    if (id) { overlay.remove(); renderLibraryButton(); setTimeout(openLibraryPanel, 200); }
+  };
+  overlay.querySelectorAll('[data-load]').forEach(b => b.onclick = () => {
+    loadCampaignFromLibrary(b.getAttribute('data-load'));
+    overlay.remove();
+  });
+  overlay.querySelectorAll('[data-rename]').forEach(b => b.onclick = () => {
+    const id = b.getAttribute('data-rename');
+    const cur = _readLibrary().find(c => c.id === id);
+    const newLabel = prompt('Rename campaign:', cur ? cur.label : '');
+    if (newLabel === null) return;
+    renameCampaignInLibrary(id, newLabel.trim() || (cur ? cur.label : 'Untitled'));
+    overlay.remove();
+    openLibraryPanel();
+  });
+  overlay.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    if (!confirm('Delete this saved campaign? This cannot be undone.')) return;
+    deleteCampaignFromLibrary(b.getAttribute('data-del'));
+    overlay.remove();
+    renderLibraryButton();
+    openLibraryPanel();
+  });
+}
+
 function renderRegenButton() {
   let btn = document.getElementById('ptmaRegen');
   if (!btn) {
@@ -4856,6 +5208,7 @@ window.showTab = function(n) {
   renderCopyButton();
   renderExportButton();
   renderRegenButton();
+  renderLibraryButton();
   if (n === 11) {
     try { rCalendar(); } catch (e) { console.warn('rCalendar failed:', e); }
   }
