@@ -1654,6 +1654,34 @@ function setLoadingSub(text) {
   if (el) el.textContent = text;
 }
 
+// PHASE 1 streaming UI helper: brief green pulse on a tab button so coaches
+// see "that tab just became readable" in their peripheral vision while still
+// on a different tab. tabIdx is 0-indexed to match showTab().
+function _flashTabReady(tabIdx) {
+  try {
+    const btn = document.querySelector('button[onclick="showTab(' + tabIdx + ')"]');
+    if (!btn) return;
+    // Inject the pulse keyframes once.
+    if (!document.getElementById('ptmaTabPulseStyle')) {
+      const style = document.createElement('style');
+      style.id = 'ptmaTabPulseStyle';
+      style.textContent = '@keyframes ptmaTabReady{0%{box-shadow:0 0 0 0 rgba(56,189,248,0.7)}70%{box-shadow:0 0 0 10px rgba(56,189,248,0)}100%{box-shadow:0 0 0 0 rgba(56,189,248,0)}} .ptma-tab-ready-dot{position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:#10B981;animation:ptmaTabReady 1.8s ease-out 3}';
+      document.head.appendChild(style);
+    }
+    // Add a small green dot to the tab button.
+    if (getComputedStyle(btn).position === 'static') btn.style.position = 'relative';
+    const old = btn.querySelector('.ptma-tab-ready-dot');
+    if (old) old.remove();
+    const dot = document.createElement('span');
+    dot.className = 'ptma-tab-ready-dot';
+    btn.appendChild(dot);
+    // Remove the dot once the user clicks/visits the tab (or after 12s as a fallback).
+    const cleanup = () => { try { dot.remove(); } catch (_) {} btn.removeEventListener('click', cleanup); };
+    btn.addEventListener('click', cleanup);
+    setTimeout(cleanup, 12000);
+  } catch (_) {}
+}
+
 // PATCHED 2026-05-22 (round 4): persistent "still generating" pill that
 // stays visible AFTER the full-screen loading dismisses, so coaches know
 // background sections (Content/Email/DM) are still being written.
@@ -1794,17 +1822,22 @@ async function generate() {
     rStrat(st2); S.res.strat=st2; saveCampaign(b);
     markStep(0, 'done');
 
+    // PHASE 1 STREAMING UI (slide 13 promise): dismiss the loading screen NOW
+    // — the moment Strategy is ready — and drop the coach onto the Strategy tab.
+    // The persistent gen-pill at top-right keeps them informed about everything
+    // still being written in the background.
+    document.getElementById('loading').classList.remove('active');
+    showTab(3);
+    _flashTabReady(3);
+    showGenPill('Strategy ready · writing Lead Gen + FEO…', t0);
+
     // ── Step 1: Lead Gen + FEO ──
     markStep(1, 'active'); setLoadingSub('Designing your lead magnet and front-end offer…');
     const lg = await api(sys,pLead(b),8500);
     rLead(lg); S.res.lead=lg; saveCampaign(b);
     markStep(1, 'done');
-
-    // Show the Strategy tab now so coaches see progress while the rest generates.
-    // Show the persistent "still generating" pill so coaches don't think it stopped.
-    document.getElementById('loading').classList.remove('active');
-    showTab(3);
-    showGenPill('Writing the content plan…', t0);
+    _flashTabReady(4);
+    showGenPill('Lead Gen ready · writing the Content Plan…', t0);
 
     // ── Step 2: Content Plan (two calls) ──
     markStep(2, 'active'); setLoadingSub('Building your 4-week content plan…');
@@ -1813,21 +1846,24 @@ async function generate() {
     const ct = mergeContent(ct1,ct2);
     rContent(ct); S.res.content=ct; saveCampaign(b);
     markStep(2, 'done');
+    _flashTabReady(5);
+    showGenPill('Content Plan ready · writing the Email Sequence…', t0);
 
     // ── Step 3: Email Sequence (dynamic count, batched in 3s) ──
     // TIER 2.3: batches of 3 to stay within token budgets and keep latency predictable.
     markStep(3, 'active'); setLoadingSub('Writing the ' + (b.emailCount || 6) + '-email nurture sequence…');
-    showGenPill('Writing the email sequence…', t0);
     const em = await generateEmailBatches(b, sys);
     rEmail(em); S.res.email = em; saveCampaign(b);
     markStep(3, 'done');
+    _flashTabReady(6);
+    showGenPill('Email Sequence ready · drafting the DM Scripts…', t0);
 
     // ── Step 4: DM Scripts ──
     markStep(4, 'active'); setLoadingSub('Drafting the DM scripts suite…');
-    showGenPill('Drafting the DM scripts…', t0);
     const dm = await api(sys,pDM(b),3500);
     rDM(dm); S.res.dm=dm; saveCampaign(b);
     markStep(4, 'done');
+    _flashTabReady(7);
 
     // ── Step 5: Optional extras (ManyChat, Meta, Gym Floor) ──
     // TIER 2.4: Gym Floor generates automatically if the gym floor channel is
@@ -1835,25 +1871,30 @@ async function generate() {
     const wantsGymFloor = (b.channels && b.channels.gymfloor) || b.salesPath === 'gymfloor';
     if (b.opts.manychat || b.opts.meta || wantsGymFloor) {
       markStep(5, 'active'); setLoadingSub('Generating optional extras…');
-      showGenPill('Generating optional extras…', t0);
       if(b.opts.manychat){
+        showGenPill('DM Scripts ready · writing ManyChat flow…', t0);
         const mc = await api('You are an expert ManyChat automation strategist for fitness coaches. Apply PTMA principles. Return ONLY compact JSON. No preamble.',pManyChat(b),5500);
         if(mc){rManyChat(mc,b); S.res.manychat=mc; saveCampaign(b);}
         const mcT=document.getElementById('manychatTab'); if(mcT) mcT.style.display='';
+        _flashTabReady(8);
       }
       if(b.opts.meta){
+        showGenPill('Writing the Meta Ads funnel…', t0);
         const mt = await api(sys,pMeta(b),6500);
         if(mt){rMeta(mt,b); S.res.meta=mt; saveCampaign(b);}
         const mtT=document.getElementById('metaTab'); if(mtT) mtT.style.display='';
+        _flashTabReady(9);
       }
       if (wantsGymFloor) {
-        showGenPill('Writing your gym-floor 4-step process…', t0);
+        showGenPill('Writing your gym-floor 4-step process + conversion menu…', t0);
         const gf = await api(sys, pGymFloor(b), 7500);
         if (gf) { rGymFloor(gf); S.res.gymfloor = gf; saveCampaign(b); }
         document.getElementById('gymfloorTab').style.display = '';
+        _flashTabReady(10);
       }
     }
     markStep(5, 'done');
+    _flashTabReady(11); // Calendar tab — aggregates everything that's just been generated
 
     // Belt-and-braces sync: ensure optional tabs match opts (covers restore + future paths)
     try{
@@ -4302,7 +4343,9 @@ function _buildCalendarRows() {
 }
 
 // EXPORT 1: Whole campaign as one Markdown file
-async function exportWholeMarkdown() {
+// Shared helper — builds the whole-campaign markdown bundle.
+// Returns { md, included, slug, date } or null if nothing to export.
+function _buildWholeCampaignMarkdown() {
   const b = S.brief || {};
   const niche = b.niche || 'campaign';
   const offer = b.offer || '';
@@ -4343,10 +4386,30 @@ async function exportWholeMarkdown() {
       parts.push('\n## ' + sec.label + '\n\n_(export failed for this section — regenerate and retry)_\n\n---\n');
     }
   });
-  if (!included) { showToast('Nothing to export — generate a campaign first'); return; }
+  if (!included) return null;
   const slug = (offer || niche || 'campaign').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-  _dlBlob('ptma-' + slug + '-' + date + '.md', 'text/markdown', parts.join(''));
-  showToast('Exported full campaign (' + included + ' sections) ✓');
+  return { md: parts.join(''), included, slug, date };
+}
+
+// EXPORT 1a: Download whole campaign as Markdown file
+async function exportWholeMarkdown() {
+  const out = _buildWholeCampaignMarkdown();
+  if (!out) { showToast('Nothing to export — generate a campaign first'); return; }
+  _dlBlob('ptma-' + out.slug + '-' + out.date + '.md', 'text/markdown', out.md);
+  showToast('Exported full campaign (' + out.included + ' sections) ✓');
+}
+
+// EXPORT 1b: Copy whole campaign to clipboard (PHASE 1 promise — slide 13 + 11)
+async function copyWholeCampaignToClipboard() {
+  const out = _buildWholeCampaignMarkdown();
+  if (!out) { showToast('Nothing to copy — generate a campaign first'); return; }
+  try {
+    await navigator.clipboard.writeText(out.md);
+    const sizeKb = Math.round(out.md.length / 1024);
+    showToast('Copied full campaign — ' + out.included + ' sections, ~' + sizeKb + 'KB ✓');
+  } catch (e) {
+    showToast('Copy failed — ' + e.message);
+  }
 }
 
 // EXPORT 2: Calendar as CSV download
@@ -4398,6 +4461,107 @@ async function exportCalendarTSV() {
   }
 }
 
+// EXPORT 3b: Whole-campaign TSV bundle for Google Sheets (PHASE 1 slide 13 promise).
+// Produces a single TSV where each tab is a section divided by a header row,
+// so coaches paste once into Sheets and get the whole campaign as a structured grid.
+async function exportAllTabsTSV() {
+  const b = S.brief || {};
+  const sections = [];
+  // Section 1 — Campaign overview (key/value rows)
+  const overview = [
+    ['CAMPAIGN OVERVIEW'],
+    ['Field', 'Value'],
+    ['Niche', b.niche || ''],
+    ['Core offer', b.offer || ''],
+    ['Price', b.price ? '£' + b.price : ''],
+    ['Monthly revenue target', b.goal ? '£' + b.goal : ''],
+    ['Client LTV', b.ltv ? '£' + b.ltv : ''],
+    ['Sales path', b.salesPath || ''],
+    ['Connected campaigns', String((b.campaigns || []).length || 1)]
+  ];
+  sections.push(overview);
+  // Section 2 — Calendar (day-by-day)
+  const calRows = _buildCalendarRows();
+  if (calRows.length) {
+    const calSection = [['CALENDAR'], ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM']];
+    calRows.forEach(r => calSection.push([r.date, r.campaignName || '', r.phaseCode || '', r.social.join(' | '), r.email.join(' | '), r.paidAds.join(' | '), r.dm.join(' | ')]));
+    sections.push(calSection);
+  }
+  // Section 3 — Content Plan (post-by-post)
+  if (S.res.content && S.res.content.weeklyPlan) {
+    const cp = [['CONTENT PLAN'], ['Date', 'Week', 'Phase', 'Platform', 'Format', 'Pillar', 'Angle', 'Hook', 'CTA']];
+    S.res.content.weeklyPlan.forEach(wk => {
+      (wk.posts || []).forEach(p => {
+        cp.push([p.date || '', String(wk.week || ''), p.phaseCode || '', p.platform || '', p.format || '', p.pillar || '', p.angle || '', p.hook || '', p.cta || '']);
+      });
+    });
+    if (cp.length > 2) sections.push(cp);
+  }
+  // Section 4 — Email Sequence
+  if (S.res.email && S.res.email.sequence) {
+    const es = [['EMAIL SEQUENCE'], ['#', 'Campaign', 'Timing', 'Subject Line', 'Hook', 'CTA']];
+    S.res.email.sequence.forEach((em, i) => {
+      es.push([String(em.emailNum || (i+1)), em.forCampaign || '', em.timing || '', em.subjectLine || '', em.hook || '', em.cta || '']);
+    });
+    if (es.length > 2) sections.push(es);
+  }
+  // Section 5 — DM Scripts
+  if (S.res.dm) {
+    const dm = [['DM SCRIPTS'], ['Scenario', 'When to use', 'Opener', 'Follow-up']];
+    const dmEntries = [
+      ['Welcome DM', S.res.dm.welcomeDM],
+      ['Story Reply', S.res.dm.storyReplyScript],
+      ['Lead Ad Reply', S.res.dm.leadAdReplyScript],
+      ['Reactivation', S.res.dm.reactivationDM]
+    ];
+    dmEntries.forEach(([name, val]) => {
+      if (!val) return;
+      const whenTo = val.whenToUse || val.when || '';
+      const opener = val.opener || val.message || (typeof val === 'string' ? val : '');
+      const followUp = val.followUp || val.followUpNoReply || '';
+      dm.push([name, whenTo, opener, followUp]);
+    });
+    if (dm.length > 2) sections.push(dm);
+  }
+  // Section 6 — Meta Ads (funnel-stage)
+  if (S.res.meta) {
+    const ma = [['META ADS'], ['Funnel stage', 'Promotes', 'Headline', 'Primary text', 'CTA button', 'Daily budget', 'Flight']];
+    const ads = [
+      ['Top — cold', S.res.meta.leadMagnetAd],
+      ['Mid — warm', S.res.meta.feoAd],
+      ['Bottom — hot', S.res.meta.coreOfferAd],
+      ['Engagement', S.res.meta.engagementAd]
+    ];
+    const bf = S.res.meta.budgetFramework || {};
+    ads.forEach(([stage, ad]) => {
+      if (!ad) return;
+      ma.push([stage, ad.promotes || '', ad.headline || '', (ad.primaryText || '').replace(/\n/g, ' '), ad.ctaButton || '', bf.dailyBudget || '', bf.flightDates || '']);
+    });
+    if (ma.length > 2) sections.push(ma);
+  }
+  // Section 7 — Gym Floor conversion menu
+  if (S.res.gymfloor && S.res.gymfloor.conversionMenu && S.res.gymfloor.conversionMenu.length) {
+    const gf = [['GYM FLOOR CONVERSION MENU'], ['#', 'Name', 'Type', 'Duration', 'Price', 'Best for', 'Floor script', 'Funnel role']];
+    S.res.gymfloor.conversionMenu.forEach((c, i) => {
+      gf.push([String(i+1), c.name || '', c.type || '', c.duration || '', c.price || '', c.bestFor || '', c.floorScript || '', c.funnelRole || '']);
+    });
+    sections.push(gf);
+  }
+  if (sections.length === 0) { showToast('Nothing to copy — generate a campaign first'); return; }
+  // Concatenate with blank rows between sections so Sheets shows them as visually separated blocks
+  const lines = [];
+  sections.forEach((sec, idx) => {
+    if (idx > 0) lines.push(''); // separator blank line
+    sec.forEach(row => lines.push(row.map(_tsvCell).join('\t')));
+  });
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    showToast('Whole campaign copied as TSV — ' + sections.length + ' sections, paste into Google Sheets ✓');
+  } catch (e) {
+    showToast('Copy failed — ' + e.message);
+  }
+}
+
 // EXPORT 4: Print / Save as PDF
 function exportPDF() {
   // The print stylesheet (added in <style> block) hides tab bar, buttons, etc.
@@ -4419,10 +4583,12 @@ function renderExportButton() {
     wrap.style.cssText = 'position:fixed;bottom:24px;right:310px;z-index:9000';
     wrap.innerHTML = '<button id="ptmaExportBtn" style="background:#0F1628;color:#fff;border:none;padding:12px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.18);transition:transform 0.15s">📦 Export ▾</button>' +
       '<div id="ptmaExportMenu" style="display:none;position:absolute;bottom:48px;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 12px 28px rgba(15,22,40,0.18);padding:6px;min-width:280px">' +
-        '<button data-x="md" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📄 Whole campaign as Markdown</strong><div style="font-size:11px;color:#64748b;margin-top:2px">One .md file — paste into Notion / Google Docs / hand to a VA</div></button>' +
-        '<button data-x="csv" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📊 Calendar as CSV (download)</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Opens in Excel / Numbers / imports into Google Sheets</div></button>' +
-        '<button data-x="tsv" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📋 Calendar → Google Sheets (paste)</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Copies to clipboard — Cmd/Ctrl+V into any Sheets tab</div></button>' +
-        '<button data-x="pdf" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>🖨️ Print / Save as PDF</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Opens print dialog — pick "Save as PDF" as destination</div></button>' +
+        '<button data-x="copyall" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📋 Copy ALL — whole campaign to clipboard</strong><div style="font-size:11px;color:#64748b;margin-top:2px">One click → paste into any doc, email to your VA, done</div></button>' +
+        '<button data-x="allsheets" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📊 Whole campaign → Google Sheets</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Every tab as a section — paste once, get the full grid</div></button>' +
+        '<button data-x="md" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📄 Download Markdown file</strong><div style="font-size:11px;color:#64748b;margin-top:2px">One .md file — for Notion / Google Docs / archive</div></button>' +
+        '<button data-x="csv" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>📑 Calendar as CSV (download)</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Opens in Excel / Numbers / imports into Sheets</div></button>' +
+        '<button data-x="tsv" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>🗓️ Calendar only → Sheets paste</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Just the day-by-day calendar to clipboard</div></button>' +
+        '<button data-x="pdf" style="display:block;width:100%;text-align:left;background:none;border:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:#0F1628"><strong>🖨️ Print / Save as PDF</strong><div style="font-size:11px;color:#64748b;margin-top:2px">Opens print dialog — pick "Save as PDF"</div></button>' +
       '</div>';
     document.body.appendChild(wrap);
     const menu = wrap.querySelector('#ptmaExportMenu');
@@ -4438,10 +4604,12 @@ function renderExportButton() {
         ev.stopPropagation();
         menu.style.display = 'none';
         const x = b.getAttribute('data-x');
-        if (x === 'md')  await exportWholeMarkdown();
-        if (x === 'csv') exportCalendarCSV();
-        if (x === 'tsv') await exportCalendarTSV();
-        if (x === 'pdf') exportPDF();
+        if (x === 'copyall')   await copyWholeCampaignToClipboard();
+        if (x === 'allsheets') await exportAllTabsTSV();
+        if (x === 'md')        await exportWholeMarkdown();
+        if (x === 'csv')       exportCalendarCSV();
+        if (x === 'tsv')       await exportCalendarTSV();
+        if (x === 'pdf')       exportPDF();
       };
     });
     // Click outside closes
