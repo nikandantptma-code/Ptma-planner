@@ -4650,7 +4650,7 @@ function _buildCalendarRows() {
   };
   const dayMap = {};
   const ensure = (date, meta) => {
-    if (!dayMap[date]) dayMap[date] = { date, campIdx: meta.campIdx, campaignName: meta.campaignName, phaseCode: meta.phaseCode, social: [], email: [], paidAds: [], dm: [] };
+    if (!dayMap[date]) dayMap[date] = { date, campIdx: meta.campIdx, campaignName: meta.campaignName, phaseCode: meta.phaseCode, social: [], email: [], paidAds: [], dm: [], gymFloor: [] };
     return dayMap[date];
   };
   // Social posts
@@ -4692,13 +4692,23 @@ function _buildCalendarRows() {
   // Paid ads — start of flight only
   if (S.res.meta) {
     const md = S.res.meta;
-    const flightStart = md.budgetFramework && md.budgetFramework.flightDates ? (md.budgetFramework.flightDates.match(/\d{4}-\d{2}-\d{2}/) || [])[0] : null;
+    const allDates = md.budgetFramework && md.budgetFramework.flightDates ? (md.budgetFramework.flightDates.match(/\d{4}-\d{2}-\d{2}/g) || []) : [];
+    const flightStart = allDates[0] || null;
+    const flightEnd = allDates[1] || null;
     const start = flightStart || (camps[0] && camps[0].start) || b.start;
+    const end = flightEnd || b.launch || (camps[camps.length-1] && camps[camps.length-1].end);
     if (start) {
       const meta = phaseFor(start);
       if (md.leadMagnetAd)  ensure(start, meta).paidAds.push('🚀 Lead Magnet Ad (cold) flight begins');
       if (md.feoAd)         ensure(start, meta).paidAds.push('🚀 FEO Retarget Ad (warm) flight begins');
       if (md.coreOfferAd)   ensure(start, meta).paidAds.push('🚀 Core Offer Retarget Ad (hot) flight begins');
+    }
+    // PHASE 1 PROMISE — flight END dates too
+    if (end && end !== start) {
+      const meta = phaseFor(end);
+      if (md.leadMagnetAd)  ensure(end, meta).paidAds.push('🏁 Lead Magnet Ad (cold) flight ENDS — review CPL + decide next step');
+      if (md.feoAd)         ensure(end, meta).paidAds.push('🏁 FEO Retarget Ad (warm) flight ENDS — review ROAS');
+      if (md.coreOfferAd)   ensure(end, meta).paidAds.push('🏁 Core Offer Retarget Ad (hot) flight ENDS — review final conversions');
     }
   }
   // DM — anchored to first content date (used as activation reminder)
@@ -4707,6 +4717,32 @@ function _buildCalendarRows() {
     if (firstDate) {
       const meta = phaseFor(firstDate);
       ensure(firstDate, meta).dm.push('DM scripts active — welcome / story reply / lead-ad reply');
+      // 3-touch reactivation sequence: anchor Touch 1 to campaign start, Touch 2 + 3 to +3 / +7 days
+      if (S.res.dm.reactivationSequence) {
+        const rs = S.res.dm.reactivationSequence;
+        const base = new Date(firstDate);
+        [['touch1', 0, 'Soft re-open'], ['touch2', 3, 'Value / proof'], ['touch3', 7, 'Clean ask']].forEach(([k, off, label]) => {
+          const t = rs[k];
+          if (!t) return;
+          const d = new Date(base); d.setDate(d.getDate() + off);
+          const ds = d.toISOString().slice(0, 10);
+          const m = phaseFor(ds);
+          ensure(ds, m).dm.push('💬 Reactivation Touch ' + k.slice(-1) + ' — ' + label + (t.channel ? ' (' + t.channel + ')' : ''));
+        });
+      }
+    }
+  }
+  // PHASE 1 PROMISE — Gym Floor column. Anchor 4-step process activation to campaign start;
+  // surface each conversionMenu item's name on the same date so the coach sees their toolkit live.
+  if (S.res.gymfloor) {
+    const anchor = (camps[0] && camps[0].start) || b.start;
+    if (anchor) {
+      const gf = S.res.gymfloor;
+      const meta = phaseFor(anchor);
+      ensure(anchor, meta).gymFloor.push('🏋️ Gym Floor 4-step process active');
+      if (gf.conversionMenu && gf.conversionMenu.length) {
+        ensure(anchor, meta).gymFloor.push('Toolkit: ' + gf.conversionMenu.filter(Boolean).map(c => c.name).filter(Boolean).slice(0, 5).join(' · '));
+      }
     }
   }
   return Object.keys(dayMap).sort().map(k => dayMap[k]);
@@ -4789,7 +4825,7 @@ function exportCalendarCSV() {
   const b = S.brief || {};
   const date = new Date().toISOString().slice(0, 10);
   const slug = ((b.offer || b.niche || 'campaign')).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-  const headers = ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM'];
+  const headers = ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM', 'Gym Floor'];
   const lines = [headers.map(_csvCell).join(',')];
   rows.forEach(r => {
     lines.push([
@@ -4799,7 +4835,8 @@ function exportCalendarCSV() {
       r.social.join(' | '),
       r.email.join(' | '),
       r.paidAds.join(' | '),
-      r.dm.join(' | ')
+      r.dm.join(' | '),
+      (r.gymFloor || []).join(' | ')
     ].map(_csvCell).join(','));
   });
   _dlBlob('ptma-calendar-' + slug + '-' + date + '.csv', 'text/csv', lines.join('\n'));
@@ -4810,7 +4847,7 @@ function exportCalendarCSV() {
 async function exportCalendarTSV() {
   const rows = _buildCalendarRows();
   if (!rows.length) { showToast('Calendar is empty — generate first'); return; }
-  const headers = ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM'];
+  const headers = ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM', 'Gym Floor'];
   const lines = [headers.join('\t')];
   rows.forEach(r => {
     lines.push([
@@ -4820,7 +4857,8 @@ async function exportCalendarTSV() {
       r.social.join(' | '),
       r.email.join(' | '),
       r.paidAds.join(' | '),
-      r.dm.join(' | ')
+      r.dm.join(' | '),
+      (r.gymFloor || []).join(' | ')
     ].map(_tsvCell).join('\t'));
   });
   try {
@@ -4853,8 +4891,8 @@ async function exportAllTabsTSV() {
   // Section 2 — Calendar (day-by-day)
   const calRows = _buildCalendarRows();
   if (calRows.length) {
-    const calSection = [['CALENDAR'], ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM']];
-    calRows.forEach(r => calSection.push([r.date, r.campaignName || '', r.phaseCode || '', r.social.join(' | '), r.email.join(' | '), r.paidAds.join(' | '), r.dm.join(' | ')]));
+    const calSection = [['CALENDAR'], ['Date', 'Campaign', 'Phase', 'Social', 'Email', 'Paid Ads', 'DM', 'Gym Floor']];
+    calRows.forEach(r => calSection.push([r.date, r.campaignName || '', r.phaseCode || '', r.social.join(' | '), r.email.join(' | '), r.paidAds.join(' | '), r.dm.join(' | '), (r.gymFloor || []).join(' | ')]));
     sections.push(calSection);
   }
   // Section 3 — Content Plan (post-by-post)
