@@ -3579,6 +3579,10 @@ function rGymFloor(d) {
   // TIER 2.8: Conversion Menu — 5-7 named, scoped, scripted offers to pull from during Step 3/4
   if (d.conversionMenu && d.conversionMenu.length) {
     h += '<div class="card card-cyan"><div class="section-label">Gym Floor Conversion Menu</div>';
+    // TIER 2.8b: show the model's read of the niche so the coach can spot misreads
+    if (d.nicheCategory) {
+      h += '<div style="display:inline-block;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;background:#fff;border:1px solid var(--cyanBorder);color:var(--teal);padding:4px 10px;border-radius:4px;font-weight:700;margin-bottom:10px">Niche read as: ' + d.nicheCategory + '</div>';
+    }
     h += '<div style="font-size:12px;color:var(--textSub);margin-bottom:14px">' + d.conversionMenu.filter(Boolean).length + ' specific offers you can pull from during a Step 3 or Step 4 conversation. Each is sized to fit naturally inside a gym-floor exchange and tells you where it feeds in your funnel.</div>';
     d.conversionMenu.filter(Boolean).forEach((c, i) => {
       h += '<div style="background:#fff;border:1px solid var(--border);border-left:4px solid var(--cyan);border-radius:8px;padding:14px 16px;margin-bottom:10px">';
@@ -4113,6 +4117,7 @@ function mdGymFloor(d) {
   }
   if (d.conversionMenu?.length) {
     m += '## Gym Floor Conversion Menu\n\n';
+    if (d.nicheCategory) m += '**Niche read as:** ' + ss(d.nicheCategory) + '\n\n';
     m += '_' + d.conversionMenu.filter(Boolean).length + ' specific offers to pull from during a Step 3 or Step 4 conversation._\n\n';
     d.conversionMenu.filter(Boolean).forEach((c, i) => {
       m += '### ' + (i+1) + '. ' + ss(c.name || '(unnamed offer)') + (c.type ? ' _(' + ss(c.type) + ')_' : '') + '\n\n';
